@@ -2,7 +2,11 @@
 
 ## Purpose
 
-This document defines the canonical contract between the Godot shell, the GDExtension bridge, and the C++ simulation core.
+This document defines the **target end-state contract** between the Godot shell, the GDExtension bridge, and the C++ simulation core.
+
+The full surface described here is the API Alpha is building toward.
+For the currently implemented subset in code, see `docs/implementation_status.md` and the
+public headers under `sim/include/alpha/api/` and `extension/include/godot_bridge/`.
 
 The simulation is treated as a service with a narrow typed API:
 - Godot sends commands
@@ -308,6 +312,11 @@ struct ChunkVisualResult {
 };
 ```
 
+Rules:
+- Milestone 1 defines only `layer_index = 0` for base terrain visuals.
+- Until additional chunk visual layers are introduced, implementations may ignore other `layer_index` values and return the same result as `layer_index = 0`.
+- If `query.chunk` is outside the current world bounds, return `ChunkVisualResult` with `chunk = query.chunk`, `width = 0`, `height = 0`, and zero-initialized `cells`.
+
 ### Overlay chunks
 
 ```cpp
@@ -474,6 +483,8 @@ The bridge should expose these methods directly or with one-to-one wrappers:
 ## Versioning
 
 - The API is end-state-first and may be implemented incrementally.
+- Until the full surface lands, `docs/implementation_status.md` tracks which portions of this
+  target contract are currently implemented.
 - Unused query fields may return default values until the owning milestone lands.
 - Method names and core payload shapes should remain stable once introduced.
 - If a bridge method is documented but the Godot binding dependency is not yet present, it is acceptable to land the sim-facing typed wrapper first and add the final GDExtension registration path when the binding is available.

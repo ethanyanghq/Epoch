@@ -451,6 +451,11 @@ It should only:
 - expose lifecycle hooks
 - expose performance counters
 
+This section describes the **target bridge shape**.
+For exact currently implemented methods, see `docs/implementation_status.md` and the bridge
+headers. If a concrete method name here conflicts with `docs/simulation_api.md`, defer to
+`docs/simulation_api.md` for the intended final API contract.
+
 ### Good bridge API shape
 - `create_world(seed, settings)`
 - `load_world(path)`
@@ -744,4 +749,3 @@ The winning architecture for Alpha is:
 - narrow bridge between them
 - chunked rendering
 - deterministic test-first simulation
-

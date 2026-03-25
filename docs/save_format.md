@@ -2,7 +2,10 @@
 
 ## Purpose
 
-This document defines the canonical save boundary for Alpha.
+This document defines the **target end-state save boundary** for Alpha.
+
+This save format is part of the final Alpha design. It is not fully implemented in the current
+codebase yet. For the current implementation subset, see `docs/implementation_status.md`.
 
 The save format must preserve enough simulation state to resume deterministically for the same future inputs.
 

@@ -24,4 +24,5 @@ for path in "${required_paths[@]}"; do
 done
 
 echo "Baseline repository structure is present."
-echo "Playable macOS build is not implemented yet; next step is Milestone 1."
+echo "Playable macOS game shell/export is not implemented yet."
+echo "The repository currently contains an early Milestone 1 native sim/bridge subset."
