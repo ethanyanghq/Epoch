@@ -1,0 +1,57 @@
+.DS_Store
+
+# Editor and OS noise
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Godot local/editor state and export outputs
+.godot/
+.import/
+export_presets.cfg
+*.translation
+*.tmp
+game/.godot/
+game/.import/
+game/export/build/
+game/export/macos/*.app
+game/export/macos/*.zip
+game/export/macos/*.dmg
+
+# CMake and native build outputs
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+Makefile
+cmake_install.cmake
+*.cmake.user
+
+# Native binaries and debug symbols
+*.a
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.lib
+*.pdb
+*.dSYM/
+
+# Test, profiling, and local run artifacts
+*.log
+*.profraw
+*.profdata
+coverage/
+
+# Python cache from local tooling
+__pycache__/
+*.pyc
+
+# Keep documentation tracked
+!*.md
