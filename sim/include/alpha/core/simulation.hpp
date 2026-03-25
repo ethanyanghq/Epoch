@@ -1,0 +1,22 @@
+#pragma once
+
+#include <optional>
+
+#include "alpha/api/result_types.hpp"
+#include "alpha/world/world_state.hpp"
+
+namespace alpha::core {
+
+class Simulation final {
+ public:
+  CreateWorldResult create_world(const WorldCreateParams& params);
+  TurnReport advance_month();
+  WorldMetrics get_world_metrics() const;
+
+  bool has_world() const noexcept;
+
+ private:
+  std::optional<world::WorldState> world_state_;
+};
+
+}  // namespace alpha::core

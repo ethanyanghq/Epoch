@@ -6,12 +6,30 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_library(alpha_sim INTERFACE)
+include(CTest)
+
+add_library(alpha_sim STATIC
+  src/api/world_api.cpp
+  src/core/simulation.cpp
+  src/world/world_state.cpp
+)
+
+target_compile_features(alpha_sim PUBLIC cxx_std_20)
 
 target_include_directories(alpha_sim
-  INTERFACE
+  PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Baseline target only.
-# Source files are added in Milestone 1 as the simulation core comes online.
+if(BUILD_TESTING)
+  add_executable(alpha_sim_smoke_test
+    tests/unit/world_api_smoke_test.cpp
+  )
+
+  target_link_libraries(alpha_sim_smoke_test
+    PRIVATE
+      alpha_sim
+  )
+
+  add_test(NAME alpha_sim_smoke_test COMMAND alpha_sim_smoke_test)
+endif()
