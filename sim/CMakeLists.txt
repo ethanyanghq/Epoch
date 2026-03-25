@@ -11,6 +11,8 @@ include(CTest)
 add_library(alpha_sim STATIC
   src/api/world_api.cpp
   src/core/simulation.cpp
+  src/map/chunk_visuals.cpp
+  src/map/map_grid.cpp
   src/world/world_state.cpp
 )
 

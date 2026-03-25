@@ -2,6 +2,7 @@
 
 #include <optional>
 
+#include "alpha/api/query_types.hpp"
 #include "alpha/api/result_types.hpp"
 #include "alpha/world/world_state.hpp"
 
@@ -11,6 +12,7 @@ class Simulation final {
  public:
   CreateWorldResult create_world(const WorldCreateParams& params);
   TurnReport advance_month();
+  ChunkVisualResult get_chunk_visual(const ChunkVisualQuery& query) const;
   WorldMetrics get_world_metrics() const;
 
   bool has_world() const noexcept;

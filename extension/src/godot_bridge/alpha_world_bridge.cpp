@@ -10,6 +10,10 @@ alpha::TurnReport AlphaWorldBridge::advance_month() {
   return world_api_.advance_month();
 }
 
+alpha::ChunkVisualResult AlphaWorldBridge::get_chunk_visual(const alpha::ChunkVisualQuery& query) const {
+  return world_api_.get_chunk_visual(query);
+}
+
 alpha::WorldMetrics AlphaWorldBridge::get_world_metrics() const {
   return world_api_.get_world_metrics();
 }

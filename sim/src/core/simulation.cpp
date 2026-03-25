@@ -4,6 +4,8 @@
 #include <string_view>
 #include <utility>
 
+#include "alpha/map/chunk_visuals.hpp"
+
 namespace alpha::core {
 namespace {
 
@@ -44,6 +46,13 @@ CreateWorldResult Simulation::create_world(const WorldCreateParams& params) {
   world_state.generation_config_path = params.generation_config_path;
   world_state.dirty_chunks = world::make_all_chunk_coords(params.map_width, params.map_height);
 
+  if (!world_state.map_grid.initialize(params.map_width, params.map_height, params.terrain_seed)) {
+    return {
+        .ok = false,
+        .error_message = "Failed to initialize the authoritative map grid.",
+    };
+  }
+
   world_state_ = std::move(world_state);
 
   return {
@@ -65,6 +74,16 @@ TurnReport Simulation::advance_month() {
       .month = world_state_->calendar.month,
       .phase_timings = make_default_phase_timings(),
   };
+}
+
+ChunkVisualResult Simulation::get_chunk_visual(const ChunkVisualQuery& query) const {
+  if (!world_state_.has_value()) {
+    return {
+        .chunk = query.chunk,
+    };
+  }
+
+  return map::build_chunk_visual_result(world_state_->map_grid, query);
 }
 
 WorldMetrics Simulation::get_world_metrics() const {

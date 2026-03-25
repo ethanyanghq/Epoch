@@ -10,6 +10,10 @@ TurnReport WorldApi::advance_month() {
   return simulation_.advance_month();
 }
 
+ChunkVisualResult WorldApi::get_chunk_visual(const ChunkVisualQuery& query) const {
+  return simulation_.get_chunk_visual(query);
+}
+
 WorldMetrics WorldApi::get_world_metrics() const {
   return simulation_.get_world_metrics();
 }

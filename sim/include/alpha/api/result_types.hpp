@@ -1,9 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+#include "alpha/api/constants.hpp"
 #include "alpha/world/ids.hpp"
 
 namespace alpha {
@@ -105,6 +107,20 @@ struct TurnReport {
   std::vector<SettlementId> shortage_settlements;
   std::vector<ChunkCoord> dirty_chunks;
   std::vector<OverlayType> dirty_overlays;
+};
+
+struct ChunkVisualCell {
+  uint8_t terrain_color_index = 0;
+  uint8_t road_flag = 0;
+  uint8_t settlement_flag = 0;
+  uint8_t reserved = 0;
+};
+
+struct ChunkVisualResult {
+  ChunkCoord chunk;
+  uint16_t width = 0;
+  uint16_t height = 0;
+  std::array<ChunkVisualCell, kChunkCellCount> cells;
 };
 
 struct WorldMetrics {

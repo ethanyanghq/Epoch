@@ -2,12 +2,13 @@
 
 #include <cstddef>
 
+#include "alpha/api/constants.hpp"
+
 namespace alpha::world {
 namespace {
 
 constexpr uint16_t kSupportedMapWidth = 1024;
 constexpr uint16_t kSupportedMapHeight = 1024;
-constexpr uint16_t kChunkSize = 64;
 
 }  // namespace
 
