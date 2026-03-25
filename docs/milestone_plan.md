@@ -4,14 +4,16 @@
 
 This document operationalizes the Alpha engineering handoff into a milestone-based execution plan.
 
-It is the delivery plan for building Alpha from the locked gameplay scope in `EpochAlphaScope.md` and the locked technical approach in `EpochStack.md`.
+It is the delivery plan for building Alpha from the locked product scope in `alpha_final_implementation_spec.md`, the locked technical approach in `alpha_tech_stack_handoff.md`, the bridge contract in `simulation_api.md`, and the architectural guardrails in `coding_standards.md`.
 
 ## 2. Source precedence
 
 When documents conflict, use this order:
-1. `EpochAlphaScope.md`
-2. `EpochStack.md`
-3. This milestone plan for sequencing, ownership, and delivery gates
+1. `alpha_final_implementation_spec.md` for product scope and gameplay rules
+2. `alpha_tech_stack_handoff.md` for tech stack, repository shape, and ownership boundaries
+3. `simulation_api.md` for method names, payload shapes, and bridge-facing contract details
+4. `coding_standards.md` for determinism and architecture guardrails
+5. This milestone plan for sequencing, ownership, and delivery gates
 
 This plan does not change gameplay rules unless it explicitly calls out an implementation-owned tuning area already allowed by the scope spec.
 

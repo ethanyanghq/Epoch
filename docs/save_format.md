@@ -60,6 +60,11 @@ struct CalendarState {
 };
 ```
 
+Rules:
+- `year` and `month_index` store the current committed world calendar state.
+- `month_index` is **1-based** and valid values are `1` through `12`.
+- A newly created world starts at `year = 1`, `month_index = 1`.
+
 ## Map snapshot
 
 The save stores both the generation inputs and the realized terrain arrays.

@@ -110,6 +110,12 @@ struct CreateWorldResult {
 };
 ```
 
+Rules:
+- Milestone 1 supports only `1024 x 1024` world creation.
+- A newly created world starts at `year = 1`, `month = 1`.
+- `MonthIndex` is **1-based** and valid values are `1` through `12`.
+- On successful creation, `dirty_chunks` contains the current full set of chunks that must be rebuilt from sim state before first presentation.
+
 ### Load world
 
 ```cpp
@@ -268,6 +274,12 @@ struct TurnReport {
   std::vector<OverlayType> dirty_overlays;
 };
 ```
+
+Rules:
+- `advance_month()` performs exactly one deterministic monthly pass.
+- `TurnReport.year` and `TurnReport.month` report the **post-advance** calendar value.
+- If a world begins at `year = 1`, `month = 1`, the first successful `advance_month()` returns `year = 1`, `month = 2`.
+- Dirty collections in the `TurnReport` are the chunks and overlays newly dirtied by that monthly pass.
 
 ## Queries
 
@@ -438,6 +450,10 @@ struct WorldMetrics {
 };
 ```
 
+Rules:
+- `get_world_metrics()` returns the current live sim-state counts.
+- `dirty_chunk_count` is the current size of the sim-owned dirty chunk set at the time of the query, not a historical counter.
+
 ## Godot-facing bridge methods
 
 The bridge should expose these methods directly or with one-to-one wrappers:
@@ -460,3 +476,4 @@ The bridge should expose these methods directly or with one-to-one wrappers:
 - The API is end-state-first and may be implemented incrementally.
 - Unused query fields may return default values until the owning milestone lands.
 - Method names and core payload shapes should remain stable once introduced.
+- If a bridge method is documented but the Godot binding dependency is not yet present, it is acceptable to land the sim-facing typed wrapper first and add the final GDExtension registration path when the binding is available.
