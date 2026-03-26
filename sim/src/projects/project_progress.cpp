@@ -13,7 +13,6 @@
 namespace alpha::projects {
 namespace {
 
-constexpr WorkAmountTenths kMonthlyConstructionCapacityTenths = 20;
 constexpr WorkAmountTenths kWorkQuantumTenths = 10;
 
 constexpr ResourceAmountTenths kRoadWoodPerCellTenths = 10;
@@ -162,6 +161,17 @@ void advance_warehouse_project(world::WorldState& world_state, ProjectState& pro
   project.blocker_codes.clear();
 }
 
+WorkAmountTenths budget_for_settlement(const std::vector<ConstructionLaborBudget>& labor_budgets,
+                                       const SettlementId settlement_id) {
+  for (const ConstructionLaborBudget& budget : labor_budgets) {
+    if (budget.settlement_id == settlement_id) {
+      return budget.common_work_tenths;
+    }
+  }
+
+  return 0;
+}
+
 }  // namespace
 
 bool is_road_built(const world::WorldState& world_state, const uint32_t cell_index) noexcept {
@@ -177,7 +187,8 @@ void mark_road_built(world::WorldState& world_state, const uint32_t cell_index) 
   ++world_state.road_cell_count;
 }
 
-ConstructionAdvanceResult advance_monthly_construction(world::WorldState& world_state) {
+ConstructionAdvanceResult advance_monthly_construction(
+    world::WorldState& world_state, const std::vector<ConstructionLaborBudget>& labor_budgets) {
   ConstructionAdvanceResult result;
   std::vector<bool> was_blocked(world_state.projects.size(), false);
   std::vector<ProjectStatus> previous_status(world_state.projects.size(), ProjectStatus::Queued);
@@ -214,7 +225,8 @@ ConstructionAdvanceResult advance_monthly_construction(world::WorldState& world_
                 return left->project_id < right->project_id;
               });
 
-    WorkAmountTenths remaining_capacity = kMonthlyConstructionCapacityTenths;
+    WorkAmountTenths remaining_capacity =
+        budget_for_settlement(labor_budgets, settlement->settlement_id);
     for (ProjectState* project : settlement_projects) {
       if (project->priority == PriorityLabel::Paused) {
         mark_project_blocked(*project, ProjectBlockerCode::PausedByPriority);

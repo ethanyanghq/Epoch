@@ -226,6 +226,37 @@ struct SettlementSummary {
   bool food_shortage_flag = false;
 };
 
+struct RoleFillView {
+  int32_t serfs = 0;
+  int32_t artisans = 0;
+  int32_t nobles = 0;
+};
+
+struct LaborDemandView {
+  int32_t protected_base = 0;
+  int32_t extra_roles = 0;
+  int32_t idle = 0;
+};
+
+struct FarmPlotView {
+  FarmPlotId plot_id;
+  ZoneId parent_zone_id;
+  uint16_t size = 0;
+  uint16_t avg_fertility_tenths = 0;
+  uint16_t avg_access_cost_tenths = 0;
+  uint16_t labor_coverage_tenths = 0;
+  std::string state_name;
+};
+
+struct SettlementDetail {
+  SettlementSummary summary;
+  RoleFillView role_fill;
+  LaborDemandView labor_demand;
+  std::vector<FarmPlotView> farm_plots;
+  uint32_t transport_capacity = 0;
+  uint32_t development_pressure_tenths = 0;
+};
+
 struct ProjectView {
   ProjectId project_id;
   SettlementId owner_settlement_id;

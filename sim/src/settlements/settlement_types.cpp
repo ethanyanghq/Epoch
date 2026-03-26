@@ -28,7 +28,7 @@ std::array<BuildingState, 2> make_starting_buildings() noexcept {
       },
       BuildingState{
           .building_type = BuildingType::WarehouseI,
-          .exists = false,
+          .exists = true,
           .staffed = false,
       },
   };
@@ -111,6 +111,7 @@ std::vector<uint32_t> build_footprint_cell_indices(const map::MapGrid& map_grid,
     }
   }
 
+  std::sort(footprint_cell_indices.begin(), footprint_cell_indices.end());
   return footprint_cell_indices;
 }
 
@@ -125,6 +126,7 @@ SettlementState make_starting_settlement(const map::MapGrid& map_grid) {
       .footprint_cell_indices = build_footprint_cell_indices(map_grid, center),
       .population_whole = 20,
       .population_fraction_tenths = 0,
+      .population_change_basis_points = 0,
       .development_pressure_tenths = 0,
       .stockpile =
           {
@@ -184,6 +186,26 @@ SettlementSummary build_settlement_summary(const SettlementState& settlement_sta
   }
 
   return summary;
+}
+
+RoleFillView build_role_fill_view(const SettlementState& settlement_state) noexcept {
+  return {
+      .serfs = settlement_state.labor_state.last_serf_fill,
+      .artisans = settlement_state.labor_state.last_artisan_fill,
+      .nobles = settlement_state.labor_state.last_noble_fill,
+  };
+}
+
+LaborDemandView build_labor_demand_view(const SettlementState& settlement_state) noexcept {
+  return {
+      .protected_base = settlement_state.labor_state.protected_base_demand,
+      .extra_roles = settlement_state.labor_state.extra_role_demand,
+      .idle = settlement_state.labor_state.idle_fill,
+  };
+}
+
+uint32_t settlement_transport_capacity(const SettlementState& settlement_state) noexcept {
+  return static_cast<uint32_t>(std::max(0, settlement_state.population_whole / 5));
 }
 
 }  // namespace alpha::settlements

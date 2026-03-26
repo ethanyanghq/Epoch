@@ -12,6 +12,8 @@
 #include "alpha/projects/project_progress.hpp"
 #include "alpha/projects/project_types.hpp"
 #include "alpha/save/save_io.hpp"
+#include "alpha/settlements/farm_plots.hpp"
+#include "alpha/settlements/labor_state.hpp"
 #include "alpha/settlements/settlement_types.hpp"
 #include "alpha/zones/zone_types.hpp"
 
@@ -34,6 +36,21 @@ std::vector<PhaseTiming> make_default_phase_timings() {
     phase_timings.push_back(PhaseTiming{.phase_name = std::string(phase_name), .duration_ms = 0});
   }
 
+  return phase_timings;
+}
+
+std::vector<PhaseTiming> make_phase_timings(const settlements::MonthlySettlementSimulationResult& settlement_result,
+                                            const projects::ConstructionAdvanceResult& construction_result) {
+  std::vector<PhaseTiming> phase_timings = make_default_phase_timings();
+  phase_timings[0].duration_ms = std::max<uint32_t>(1U, settlement_result.season_and_labor_ticks);
+  phase_timings[1].duration_ms = std::max<uint32_t>(1U, settlement_result.production_ticks);
+  phase_timings[2].duration_ms = std::max<uint32_t>(1U, settlement_result.logistics_ticks);
+  phase_timings[3].duration_ms = std::max<uint32_t>(1U, settlement_result.consumption_ticks);
+  phase_timings[4].duration_ms =
+      std::max<uint32_t>(1U, settlement_result.settlement_update_ticks +
+                                 static_cast<uint32_t>(construction_result.completed_projects.size() +
+                                                       construction_result.newly_blocked_projects.size() +
+                                                       construction_result.newly_unblocked_projects.size()));
   return phase_timings;
 }
 
@@ -171,6 +188,7 @@ BatchResult Simulation::apply_commands(const CommandBatch& batch) {
 
   BatchResult result;
   result.outcomes.reserve(batch.commands.size());
+  bool zone_state_changed = false;
 
   for (uint32_t command_index = 0; command_index < batch.commands.size(); ++command_index) {
     const CommandVariant& command = batch.commands[command_index];
@@ -182,8 +200,11 @@ BatchResult Simulation::apply_commands(const CommandBatch& batch) {
                         std::is_same_v<CommandType, RemoveZoneCellsCommand>) {
             CommandBatch single_command_batch;
             single_command_batch.commands.push_back(typed_command);
-            merge_partial_batch_result(result, zones::apply_commands(*world_state_, single_command_batch),
-                                       command_index);
+            BatchResult partial_result =
+                zones::apply_commands(*world_state_, single_command_batch);
+            zone_state_changed = zone_state_changed || !partial_result.dirty_chunks.empty() ||
+                                 !partial_result.dirty_settlements.empty();
+            merge_partial_batch_result(result, std::move(partial_result), command_index);
           } else if constexpr (std::is_same_v<CommandType, QueueRoadCommand>) {
             projects::apply_queue_road_command(*world_state_, command_index, typed_command, result);
           } else if constexpr (std::is_same_v<CommandType, QueueBuildingCommand>) {
@@ -205,6 +226,11 @@ BatchResult Simulation::apply_commands(const CommandBatch& batch) {
         command);
   }
 
+  if (zone_state_changed) {
+    settlements::rebuild_world_farm_plots(*world_state_);
+    result.dirty_overlays.push_back(OverlayType::FarmlandPlots);
+  }
+
   sort_and_deduplicate_chunks(result.dirty_chunks);
   sort_and_deduplicate_settlements(result.dirty_settlements);
   sort_and_deduplicate_overlays(result.dirty_overlays);
@@ -217,20 +243,33 @@ TurnReport Simulation::advance_month() {
   }
 
   world::clear_dirty_chunks(*world_state_);
+  const settlements::MonthlySettlementSimulationResult settlement_result =
+      settlements::advance_monthly_settlements(*world_state_);
   const projects::ConstructionAdvanceResult construction_result =
-      projects::advance_monthly_construction(*world_state_);
-  world_state_->dirty_chunks = construction_result.dirty_chunks;
+      projects::advance_monthly_construction(*world_state_, settlement_result.construction_budgets);
+  world_state_->dirty_chunks = settlement_result.dirty_chunks;
+  world_state_->dirty_chunks.insert(world_state_->dirty_chunks.end(), construction_result.dirty_chunks.begin(),
+                                    construction_result.dirty_chunks.end());
+  sort_and_deduplicate_chunks(world_state_->dirty_chunks);
+
+  std::vector<OverlayType> dirty_overlays = settlement_result.dirty_overlays;
+  dirty_overlays.insert(dirty_overlays.end(), construction_result.dirty_overlays.begin(),
+                        construction_result.dirty_overlays.end());
+  sort_and_deduplicate_overlays(dirty_overlays);
   world::advance_calendar(world_state_->calendar);
 
   return {
       .year = world_state_->calendar.year,
       .month = world_state_->calendar.month,
-      .phase_timings = make_default_phase_timings(),
+      .phase_timings = make_phase_timings(settlement_result, construction_result),
+      .stockpile_deltas = settlement_result.stockpile_deltas,
+      .population_deltas = settlement_result.population_deltas,
       .completed_projects = construction_result.completed_projects,
       .newly_blocked_projects = construction_result.newly_blocked_projects,
       .newly_unblocked_projects = construction_result.newly_unblocked_projects,
-      .dirty_chunks = construction_result.dirty_chunks,
-      .dirty_overlays = construction_result.dirty_overlays,
+      .shortage_settlements = settlement_result.shortage_settlements,
+      .dirty_chunks = world_state_->dirty_chunks,
+      .dirty_overlays = dirty_overlays,
   };
 }
 
@@ -292,6 +331,39 @@ SettlementSummary Simulation::get_settlement_summary(const SettlementId settleme
   summary = settlements::build_settlement_summary(*settlement);
   summary.active_project_count = projects::count_active_projects(*world_state_, settlement_id);
   return summary;
+}
+
+SettlementDetail Simulation::get_settlement_detail(const SettlementId settlement_id) const {
+  SettlementDetail detail;
+  detail.summary.settlement_id = settlement_id;
+  detail.summary.buildings = {
+      BuildingStateView{
+          .building_type = BuildingType::EstateI,
+      },
+      BuildingStateView{
+          .building_type = BuildingType::WarehouseI,
+      },
+  };
+
+  if (!world_state_.has_value()) {
+    return detail;
+  }
+
+  const settlements::SettlementState* settlement =
+      settlements::find_settlement(world_state_->settlements, settlement_id);
+  if (settlement == nullptr) {
+    return detail;
+  }
+
+  detail.summary = settlements::build_settlement_summary(*settlement);
+  detail.summary.active_project_count = projects::count_active_projects(*world_state_, settlement_id);
+  detail.role_fill = settlements::build_role_fill_view(*settlement);
+  detail.labor_demand = settlements::build_labor_demand_view(*settlement);
+  detail.farm_plots = settlements::build_farm_plot_views(*world_state_, settlement_id);
+  detail.transport_capacity = settlements::settlement_transport_capacity(*settlement);
+  detail.development_pressure_tenths =
+      static_cast<uint32_t>(std::max(0, settlement->development_pressure_tenths));
+  return detail;
 }
 
 ProjectListResult Simulation::get_projects(const ProjectListQuery& query) const {

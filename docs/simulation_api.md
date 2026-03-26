@@ -283,6 +283,7 @@ Rules:
 - `advance_month()` performs exactly one deterministic monthly pass.
 - `TurnReport.year` and `TurnReport.month` report the **post-advance** calendar value.
 - If a world begins at `year = 1`, `month = 1`, the first successful `advance_month()` returns `year = 1`, `month = 2`.
+- Milestone 1 may populate `PhaseTiming.duration_ms` with deterministic logical phase-cost values instead of wall-clock timing so repeated runs with the same seed and command stream remain byte-stable.
 - Dirty collections in the `TurnReport` are the chunks and overlays newly dirtied by that monthly pass.
 
 ## Queries

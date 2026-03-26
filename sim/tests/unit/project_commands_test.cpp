@@ -64,6 +64,7 @@ alpha::world::WorldState make_project_test_world_state() {
   world_state.road_cells.assign(static_cast<std::size_t>(kMapWidth) * static_cast<std::size_t>(kMapHeight),
                                 0U);
   world_state.settlements.push_back(alpha::settlements::make_starting_settlement(world_state.map_grid));
+  world_state.settlements[0].buildings[1].exists = false;
   alpha::zones::initialize_zone_state(world_state);
   world_state.next_project_id = {1};
   world_state.project_count = 0;
@@ -101,6 +102,7 @@ void clear_initial_dirty_chunks(alpha::WorldApi& world_api) {
   assert(report.year == 1U);
   assert(report.month == 2U);
   assert(report.dirty_chunks.empty());
+  assert(report.stockpile_deltas.size() == 1U);
 }
 
 std::vector<alpha::CellCoord> make_route(const alpha::CellCoord start, const int32_t length) {
@@ -180,7 +182,7 @@ int main() {
     assert(queue_result.dirty_settlements == std::vector<alpha::SettlementId>{kSettlementId});
 
     const alpha::SettlementSummary queued_summary = world_api.get_settlement_summary(kSettlementId);
-    assert(queued_summary.food == 400);
+    assert(queued_summary.food == 380);
     assert(queued_summary.wood == 160);
     assert(queued_summary.stone == 80);
     assert(queued_summary.active_project_count == 1U);

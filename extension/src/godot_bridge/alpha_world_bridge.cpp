@@ -36,6 +36,11 @@ alpha::SettlementSummary AlphaWorldBridge::get_settlement_summary(
   return world_api_.get_settlement_summary(settlement_id);
 }
 
+alpha::SettlementDetail AlphaWorldBridge::get_settlement_detail(
+    const alpha::SettlementId settlement_id) const {
+  return world_api_.get_settlement_detail(settlement_id);
+}
+
 alpha::ProjectListResult AlphaWorldBridge::get_projects(const alpha::ProjectListQuery& query) const {
   return world_api_.get_projects(query);
 }

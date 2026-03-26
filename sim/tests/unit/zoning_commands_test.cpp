@@ -202,7 +202,7 @@ alpha::CommandBatch make_valid_paint_batch(const alpha::CellCoord center) {
               alpha::ZoneCellsCommand{
                   .settlement_id = kSettlementId,
                   .zone_type = alpha::ZoneType::Farmland,
-                  .cells = make_rectangle(center.x + 3, center.y + 3, 4, 2),
+                  .cells = make_rectangle(center.x + 3, center.y + 3, 4, 3),
               },
               alpha::ZoneCellsCommand{
                   .settlement_id = kSettlementId,
@@ -245,7 +245,11 @@ int main() {
         static_cast<int16_t>((starting_summary.center.y + 3) / alpha::kChunkSize),
     };
     assert(paint_result.dirty_chunks[0] == expected_dirty_chunk);
-    assert(paint_result.dirty_overlays == std::vector<alpha::OverlayType>{alpha::OverlayType::ZoneOwner});
+    const std::vector<alpha::OverlayType> expected_dirty_overlays{
+        alpha::OverlayType::ZoneOwner,
+        alpha::OverlayType::FarmlandPlots,
+    };
+    assert(paint_result.dirty_overlays == expected_dirty_overlays);
     assert(paint_result.dirty_settlements == std::vector<alpha::SettlementId>{kSettlementId});
     assert(paint_result.new_projects.empty());
 
@@ -255,10 +259,15 @@ int main() {
     const alpha::WorldMetrics painted_metrics = world_api.get_world_metrics();
     assert(painted_metrics.settlement_count == 1U);
     assert(painted_metrics.zone_count == 3U);
-    assert(painted_metrics.plot_count == 0U);
+    assert(painted_metrics.plot_count == 1U);
     assert(painted_metrics.project_count == 0U);
     assert(painted_metrics.road_cell_count == 0U);
     assert(painted_metrics.dirty_chunk_count == 1U);
+
+    const alpha::SettlementDetail detail = world_api.get_settlement_detail(kSettlementId);
+    assert(detail.farm_plots.size() == 1U);
+    assert(detail.farm_plots[0].size == 12U);
+    assert(detail.farm_plots[0].state_name == "Unopened");
 
     const alpha::OverlayChunkResult zone_overlay = world_api.get_overlay_chunk({
         .chunk = paint_result.dirty_chunks[0],
@@ -343,14 +352,19 @@ int main() {
     assert(remove_result.outcomes.size() == 1U);
     assert(remove_result.outcomes[0].accepted);
     assert(remove_result.dirty_chunks == paint_result.dirty_chunks);
-    assert(remove_result.dirty_overlays == std::vector<alpha::OverlayType>{alpha::OverlayType::ZoneOwner});
-    assert(remove_result.dirty_settlements == std::vector<alpha::SettlementId>{kSettlementId});
+    const std::vector<alpha::OverlayType> expected_remove_overlays{
+        alpha::OverlayType::ZoneOwner,
+        alpha::OverlayType::FarmlandPlots,
+    };
+    assert(remove_result.dirty_overlays == expected_remove_overlays);
+    assert(remove_result.dirty_settlements.empty());
 
     const alpha::SettlementSummary removed_summary = world_api.get_settlement_summary(kSettlementId);
-    assert(removed_summary.active_zone_count == 2U);
+    assert(removed_summary.active_zone_count == 3U);
 
     const alpha::WorldMetrics removed_metrics = world_api.get_world_metrics();
-    assert(removed_metrics.zone_count == 2U);
+    assert(removed_metrics.zone_count == 3U);
+    assert(removed_metrics.plot_count == 0U);
   }
 
   {

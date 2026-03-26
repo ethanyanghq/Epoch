@@ -18,6 +18,7 @@ class Simulation final {
   ChunkVisualResult get_chunk_visual(const ChunkVisualQuery& query) const;
   OverlayChunkResult get_overlay_chunk(const OverlayChunkQuery& query) const;
   SettlementSummary get_settlement_summary(SettlementId settlement_id) const;
+  SettlementDetail get_settlement_detail(SettlementId settlement_id) const;
   ProjectListResult get_projects(const ProjectListQuery& query) const;
   WorldMetrics get_world_metrics() const;
 

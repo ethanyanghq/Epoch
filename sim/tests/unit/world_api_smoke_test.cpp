@@ -180,8 +180,21 @@ int main() {
   assert(settlement_summary.buildings[0].exists);
   assert(!settlement_summary.buildings[0].staffed);
   assert(settlement_summary.buildings[1].building_type == alpha::BuildingType::WarehouseI);
-  assert(!settlement_summary.buildings[1].exists);
+  assert(settlement_summary.buildings[1].exists);
   assert(!settlement_summary.buildings[1].staffed);
+
+  const alpha::SettlementDetail initial_detail =
+      world_api.get_settlement_detail(starting_settlement_id);
+  assert_settlement_summaries_equal(settlement_summary, initial_detail.summary);
+  assert(initial_detail.role_fill.serfs == 0);
+  assert(initial_detail.role_fill.artisans == 0);
+  assert(initial_detail.role_fill.nobles == 0);
+  assert(initial_detail.labor_demand.protected_base == 0);
+  assert(initial_detail.labor_demand.extra_roles == 0);
+  assert(initial_detail.labor_demand.idle == 0);
+  assert(initial_detail.farm_plots.empty());
+  assert(initial_detail.transport_capacity == 4U);
+  assert(initial_detail.development_pressure_tenths == 0U);
 
   const alpha::SettlementSummary repeated_settlement_summary =
       world_api.get_settlement_summary(starting_settlement_id);
@@ -268,11 +281,40 @@ int main() {
   assert(first_turn_report.year == 1U);
   assert(first_turn_report.month == 2U);
   assert(first_turn_report.phase_timings.size() == 5U);
-  assert(first_turn_report.stockpile_deltas.empty());
+  for (const alpha::PhaseTiming& phase_timing : first_turn_report.phase_timings) {
+    assert(!phase_timing.phase_name.empty());
+    assert(phase_timing.duration_ms > 0U);
+  }
+  assert(first_turn_report.stockpile_deltas.size() == 1U);
+  assert(first_turn_report.stockpile_deltas[0].settlement_id == starting_settlement_id);
+  assert(first_turn_report.stockpile_deltas[0].food_delta == -20);
+  assert(first_turn_report.stockpile_deltas[0].wood_delta == 0);
+  assert(first_turn_report.stockpile_deltas[0].stone_delta == 0);
   assert(first_turn_report.population_deltas.empty());
   assert(first_turn_report.completed_projects.empty());
+  assert(first_turn_report.newly_blocked_projects.empty());
+  assert(first_turn_report.newly_unblocked_projects.empty());
+  assert(first_turn_report.shortage_settlements.empty());
   assert(first_turn_report.dirty_chunks.empty());
   assert(first_turn_report.dirty_overlays.empty());
+
+  const alpha::SettlementSummary advanced_summary =
+      world_api.get_settlement_summary(starting_settlement_id);
+  assert(advanced_summary.food == 380);
+  assert(advanced_summary.buildings[0].staffed);
+  assert(advanced_summary.buildings[1].exists);
+
+  const alpha::SettlementDetail advanced_detail =
+      world_api.get_settlement_detail(starting_settlement_id);
+  assert(advanced_detail.summary.food == 380);
+  assert(advanced_detail.role_fill.serfs == 19);
+  assert(advanced_detail.role_fill.artisans == 0);
+  assert(advanced_detail.role_fill.nobles == 1);
+  assert(advanced_detail.labor_demand.protected_base == 1);
+  assert(advanced_detail.labor_demand.extra_roles == 0);
+  assert(advanced_detail.labor_demand.idle == 19);
+  assert(advanced_detail.farm_plots.empty());
+  assert(advanced_detail.transport_capacity == 4U);
 
   metrics = world_api.get_world_metrics();
   assert(metrics.dirty_chunk_count == 0U);

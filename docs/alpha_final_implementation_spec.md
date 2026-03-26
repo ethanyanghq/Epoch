@@ -530,6 +530,7 @@ Sort plots by:
 - opening is plot-level
 - non-forested plot: 1 month and 10 common work
 - forested plot: 2 months and 15 common work
+- reactivating a fallow plot: 1 month and 5 common work
 
 ### Seasonal labor profile per active plot
 - January: 0
@@ -572,7 +573,10 @@ If any active plot ended the harvest year with annual labor coverage below 1.0:
 - the lowest-priority active plot becomes fallow
 
 #### Expansion rule
-If all active plots ended the harvest year with annual labor coverage 1.0 and the settlement has at least one unopened plot:
+If all active plots ended the harvest year with annual labor coverage 1.0 and the settlement has at least one fallow plot:
+- the highest-priority fallow plot begins reactivation
+
+If all active plots ended the harvest year with annual labor coverage 1.0, there are no fallow plots to reactivate, and the settlement has at least one unopened plot:
 - the highest-priority unopened plot begins opening
 
 ### Immediate local recalculation on map changes
@@ -1004,4 +1008,3 @@ These appeared in older materials but are not part of shipping Alpha:
 - manual urban cell painting
 
 Keep schema and code extensible enough that these can be added later without rewriting core terrain, zoning, logistics, and labor systems.
-

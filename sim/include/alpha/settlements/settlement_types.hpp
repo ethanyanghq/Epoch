@@ -28,6 +28,9 @@ struct LaborState {
   int32_t last_noble_fill = 0;
   int32_t reassignment_budget_tenths = 0;
   int32_t protected_food_floor_serfs = 0;
+  int32_t protected_base_demand = 0;
+  int32_t extra_role_demand = 0;
+  int32_t idle_fill = 0;
 };
 
 struct SettlementState {
@@ -36,6 +39,7 @@ struct SettlementState {
   std::vector<uint32_t> footprint_cell_indices;
   int32_t population_whole = 0;
   int32_t population_fraction_tenths = 0;
+  int32_t population_change_basis_points = 0;
   int32_t development_pressure_tenths = 0;
   StockpileState stockpile;
   std::array<BuildingState, 2> buildings{};
@@ -52,5 +56,8 @@ const SettlementState* find_settlement(const std::vector<SettlementState>& settl
 SettlementState* find_settlement(std::vector<SettlementState>& settlements,
                                  SettlementId settlement_id) noexcept;
 SettlementSummary build_settlement_summary(const SettlementState& settlement_state) noexcept;
+RoleFillView build_role_fill_view(const SettlementState& settlement_state) noexcept;
+LaborDemandView build_labor_demand_view(const SettlementState& settlement_state) noexcept;
+uint32_t settlement_transport_capacity(const SettlementState& settlement_state) noexcept;
 
 }  // namespace alpha::settlements
