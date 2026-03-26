@@ -61,7 +61,8 @@ enum class ProjectStatus : uint8_t {
 enum class ProjectBlockerCode : uint16_t {
   Unknown,
   WaitingForConstructionSystem,
-  PausedByPriority
+  PausedByPriority,
+  WaitingForConstructionCapacity
 };
 
 enum class BuildingType : uint8_t {

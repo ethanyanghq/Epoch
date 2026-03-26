@@ -9,6 +9,7 @@
 
 #include "alpha/map/chunk_visuals.hpp"
 #include "alpha/map/overlay_chunks.hpp"
+#include "alpha/projects/project_progress.hpp"
 #include "alpha/projects/project_types.hpp"
 #include "alpha/save/save_io.hpp"
 #include "alpha/settlements/settlement_types.hpp"
@@ -101,6 +102,9 @@ CreateWorldResult Simulation::create_world(const WorldCreateParams& params) {
       .stream_state = params.gameplay_seed,
   };
   world_state.dirty_chunks = world::make_all_chunk_coords(params.map_width, params.map_height);
+  world_state.road_cells.assign(static_cast<std::size_t>(params.map_width) *
+                                    static_cast<std::size_t>(params.map_height),
+                                0U);
 
   if (!world_state.map_grid.initialize(params.map_width, params.map_height, params.terrain_seed)) {
     return {
@@ -182,6 +186,9 @@ BatchResult Simulation::apply_commands(const CommandBatch& batch) {
                                        command_index);
           } else if constexpr (std::is_same_v<CommandType, QueueRoadCommand>) {
             projects::apply_queue_road_command(*world_state_, command_index, typed_command, result);
+          } else if constexpr (std::is_same_v<CommandType, QueueBuildingCommand>) {
+            projects::apply_queue_building_command(*world_state_, command_index, typed_command,
+                                                   result);
           } else if constexpr (std::is_same_v<CommandType, SetProjectPriorityCommand>) {
             projects::apply_set_project_priority_command(*world_state_, command_index, typed_command,
                                                          result);
@@ -209,13 +216,21 @@ TurnReport Simulation::advance_month() {
     return {};
   }
 
-  world::advance_calendar(world_state_->calendar);
   world::clear_dirty_chunks(*world_state_);
+  const projects::ConstructionAdvanceResult construction_result =
+      projects::advance_monthly_construction(*world_state_);
+  world_state_->dirty_chunks = construction_result.dirty_chunks;
+  world::advance_calendar(world_state_->calendar);
 
   return {
       .year = world_state_->calendar.year,
       .month = world_state_->calendar.month,
       .phase_timings = make_default_phase_timings(),
+      .completed_projects = construction_result.completed_projects,
+      .newly_blocked_projects = construction_result.newly_blocked_projects,
+      .newly_unblocked_projects = construction_result.newly_unblocked_projects,
+      .dirty_chunks = construction_result.dirty_chunks,
+      .dirty_overlays = construction_result.dirty_overlays,
   };
 }
 
@@ -226,7 +241,7 @@ ChunkVisualResult Simulation::get_chunk_visual(const ChunkVisualQuery& query) co
     };
   }
 
-  return map::build_chunk_visual_result(world_state_->map_grid, query);
+  return map::build_chunk_visual_result(*world_state_, query);
 }
 
 OverlayChunkResult Simulation::get_overlay_chunk(const OverlayChunkQuery& query) const {

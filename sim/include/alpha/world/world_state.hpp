@@ -31,6 +31,7 @@ struct WorldState {
   WorldRngState world_rng;
   map::MapGrid map_grid;
   std::vector<ChunkCoord> dirty_chunks;
+  std::vector<uint8_t> road_cells;
   std::vector<settlements::SettlementState> settlements;
   std::vector<zones::ZoneState> zones;
   std::vector<zones::CellZoneState> zone_cells;

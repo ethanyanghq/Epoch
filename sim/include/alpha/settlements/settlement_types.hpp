@@ -49,6 +49,8 @@ struct SettlementState {
 SettlementState make_starting_settlement(const map::MapGrid& map_grid);
 const SettlementState* find_settlement(const std::vector<SettlementState>& settlements,
                                        SettlementId settlement_id) noexcept;
+SettlementState* find_settlement(std::vector<SettlementState>& settlements,
+                                 SettlementId settlement_id) noexcept;
 SettlementSummary build_settlement_summary(const SettlementState& settlement_state) noexcept;
 
 }  // namespace alpha::settlements

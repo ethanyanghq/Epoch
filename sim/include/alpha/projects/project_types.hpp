@@ -14,7 +14,8 @@ struct WorldState;
 namespace alpha::projects {
 
 enum class ProjectTypeCode : uint8_t {
-  PrototypeRoad = 1,
+  Road = 1,
+  WarehouseI = 2,
 };
 
 struct ProjectResourceState {
@@ -27,7 +28,7 @@ struct ProjectState {
   ProjectId project_id;
   SettlementId owner_settlement_id;
   ProjectFamily family = ProjectFamily::Road;
-  uint8_t type = static_cast<uint8_t>(ProjectTypeCode::PrototypeRoad);
+  uint8_t type = static_cast<uint8_t>(ProjectTypeCode::Road);
   CellCoord target;
   std::vector<uint32_t> route_cell_indices;
   PriorityLabel priority = PriorityLabel::Normal;
@@ -43,6 +44,8 @@ struct ProjectState {
 
 void apply_queue_road_command(world::WorldState& world_state, uint32_t command_index,
                               const QueueRoadCommand& command, BatchResult& result);
+void apply_queue_building_command(world::WorldState& world_state, uint32_t command_index,
+                                  const QueueBuildingCommand& command, BatchResult& result);
 void apply_set_project_priority_command(world::WorldState& world_state, uint32_t command_index,
                                         const SetProjectPriorityCommand& command,
                                         BatchResult& result);

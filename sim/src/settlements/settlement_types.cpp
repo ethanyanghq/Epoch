@@ -28,7 +28,7 @@ std::array<BuildingState, 2> make_starting_buildings() noexcept {
       },
       BuildingState{
           .building_type = BuildingType::WarehouseI,
-          .exists = true,
+          .exists = false,
           .staffed = false,
       },
   };
@@ -143,6 +143,17 @@ SettlementState make_starting_settlement(const map::MapGrid& map_grid) {
 const SettlementState* find_settlement(const std::vector<SettlementState>& settlements,
                                        const SettlementId settlement_id) noexcept {
   for (const SettlementState& settlement : settlements) {
+    if (settlement.settlement_id == settlement_id) {
+      return &settlement;
+    }
+  }
+
+  return nullptr;
+}
+
+SettlementState* find_settlement(std::vector<SettlementState>& settlements,
+                                 const SettlementId settlement_id) noexcept {
+  for (SettlementState& settlement : settlements) {
     if (settlement.settlement_id == settlement_id) {
       return &settlement;
     }
