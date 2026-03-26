@@ -1,0 +1,21 @@
+; Engine configuration file.
+; Minimal Milestone 1 shell for native bridge smoke tests.
+
+config_version=5
+
+[application]
+
+config/name="Epoch Alpha"
+run/main_scene="res://scenes/main/app_root.tscn"
+config/features=PackedStringArray("4.1")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+textures/vram_compression/import_etc2_astc=true

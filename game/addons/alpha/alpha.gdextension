@@ -1,0 +1,7 @@
+[configuration]
+entry_symbol = "alpha_library_init"
+compatibility_minimum = "4.1"
+
+[libraries]
+macos.debug = "res://bin/libalpha_godot_bridge.macos.debug.dylib"
+macos.release = "res://bin/libalpha_godot_bridge.macos.release.dylib"

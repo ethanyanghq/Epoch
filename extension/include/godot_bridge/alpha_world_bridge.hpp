@@ -1,35 +1,40 @@
 #pragma once
 
-#include <string_view>
+#include <cstdint>
+
+#include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/godot.hpp>
+#include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 
 #include "alpha/api/world_api.hpp"
 
 namespace godot_bridge {
 
-struct BridgeRegistrationInfo {
-  std::string_view module_name;
-  std::string_view bridge_class_name;
-};
+class AlphaWorldBridge final : public godot::RefCounted {
+  GDCLASS(AlphaWorldBridge, godot::RefCounted)
 
-class AlphaWorldBridge final {
  public:
-  alpha::CreateWorldResult create_world(const alpha::WorldCreateParams& params);
-  alpha::LoadWorldResult load_world(const alpha::LoadWorldParams& params);
-  alpha::SaveWorldResult save_world(const alpha::SaveWorldParams& params) const;
-  alpha::BatchResult apply_commands(const alpha::CommandBatch& batch);
-  alpha::TurnReport advance_month();
-  alpha::ChunkVisualResult get_chunk_visual(const alpha::ChunkVisualQuery& query) const;
-  alpha::OverlayChunkResult get_overlay_chunk(const alpha::OverlayChunkQuery& query) const;
-  alpha::SettlementSummary get_settlement_summary(alpha::SettlementId settlement_id) const;
-  alpha::SettlementDetail get_settlement_detail(alpha::SettlementId settlement_id) const;
-  alpha::ProjectListResult get_projects(const alpha::ProjectListQuery& query) const;
-  alpha::WorldMetrics get_world_metrics() const;
+  godot::Dictionary create_world(const godot::Dictionary& params);
+  godot::Dictionary load_world(const godot::Dictionary& params);
+  godot::Dictionary save_world(const godot::Dictionary& params) const;
+  godot::Dictionary apply_commands(const godot::Dictionary& batch);
+  godot::Dictionary advance_month();
+  godot::Dictionary get_chunk_visual(const godot::Dictionary& query) const;
+  godot::Dictionary get_overlay_chunk(const godot::Dictionary& query) const;
+  godot::Dictionary get_settlement_summary(int64_t settlement_id) const;
+  godot::Dictionary get_settlement_detail(int64_t settlement_id) const;
+  godot::Dictionary get_projects(const godot::Dictionary& query) const;
+  godot::Dictionary get_world_metrics() const;
+
+  static void _bind_methods();
 
  private:
   alpha::WorldApi world_api_;
 };
 
-BridgeRegistrationInfo get_bridge_registration_info() noexcept;
-bool register_types() noexcept;
+void initialize_alpha_module(godot::ModuleInitializationLevel level);
+void uninitialize_alpha_module(godot::ModuleInitializationLevel level);
 
 }  // namespace godot_bridge
