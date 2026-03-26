@@ -33,6 +33,7 @@ The native codebase currently includes:
 - deterministic `create_world()` support for fixed `1024 x 1024` worlds
 - sim-owned binary save/load round-tripping for the current Milestone 1 native subset
 - deterministic calendar advancement through `advance_month()`
+- the first typed `apply_commands()` batch path for zone painting and removal
 - sim-owned terrain/map storage for:
   - elevation
   - slope
@@ -41,11 +42,18 @@ The native codebase currently includes:
   - vegetation
 - `get_chunk_visual()` for fixed `64 x 64` chunk queries
 - `get_overlay_chunk()` for a sim-owned fertility overlay path
+- `get_overlay_chunk()` for a sim-owned zone-owner overlay path
 - one deterministic sim-owned starting settlement created with a new world
 - `get_settlement_summary(SettlementId)` for the initial settlement summary read path
 - `get_world_metrics()` for current live world counters
+- authoritative sim-owned zone state for:
+  - farmland
+  - forestry
+  - quarry
+- zone save/load persistence with stable zone ids and authoritative ownership
 - native tests covering world creation, chunk queries, overlay queries, settlement summary
-  reads, metrics, month advancement, and save/load equivalence
+  reads, metrics, month advancement, save/load equivalence, zoning mutations, and
+  zoning save/load equivalence
 
 ## Current public API surface
 
@@ -53,6 +61,7 @@ The currently exposed sim/bridge methods are:
 - `create_world(WorldCreateParams)`
 - `load_world(LoadWorldParams)`
 - `save_world(SaveWorldParams)`
+- `apply_commands(CommandBatch)`
 - `advance_month()`
 - `get_chunk_visual(ChunkVisualQuery)`
 - `get_overlay_chunk(OverlayChunkQuery)`
@@ -63,11 +72,11 @@ The currently exposed sim/bridge methods are:
 
 The following end-state interfaces and systems are still planned and should not be treated as
 currently callable unless their code lands:
-- `apply_commands()`
 - settlement detail queries
 - project queries
 - route debug queries
-- zoning, roads, construction, logistics, founding, and settlement simulation
+- road queueing, construction, logistics, founding, and settlement simulation beyond
+  the current zoning path
 - real Godot binding registration through `godot-cpp`
 
 ## Working rule for documentation
