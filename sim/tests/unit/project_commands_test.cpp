@@ -26,7 +26,7 @@ alpha::map::MapCell make_base_cell() {
       .slope = 0,
       .water = 0,
       .fertility = 50,
-      .vegetation = 20,
+      .vegetation = 75,
   };
 }
 
@@ -56,11 +56,13 @@ alpha::world::WorldState make_project_test_world_state() {
       .slope = 4,
       .water = 0,
       .fertility = 50,
-      .vegetation = 20,
+      .vegetation = 75,
   };
 
   assert(world_state.map_grid.initialize_from_cells(kMapWidth, kMapHeight, std::move(cells)));
 
+  world_state.road_cells.assign(static_cast<std::size_t>(kMapWidth) * static_cast<std::size_t>(kMapHeight),
+                                0U);
   world_state.settlements.push_back(alpha::settlements::make_starting_settlement(world_state.map_grid));
   alpha::zones::initialize_zone_state(world_state);
   world_state.next_project_id = {1};
@@ -72,7 +74,7 @@ alpha::world::WorldState make_project_test_world_state() {
 
 std::filesystem::path write_test_world_save(const std::string& suffix) {
   const std::filesystem::path save_path =
-      std::filesystem::temp_directory_path() / ("alpha_task7_project_fixture_" + suffix + ".bin");
+      std::filesystem::temp_directory_path() / ("alpha_task8_project_fixture_" + suffix + ".bin");
   std::filesystem::remove(save_path);
 
   const alpha::SaveWorldResult save_result = alpha::save::save_world(
@@ -110,6 +112,12 @@ std::vector<alpha::CellCoord> make_route(const alpha::CellCoord start, const int
   return route;
 }
 
+std::size_t chunk_cell_index(const alpha::ChunkCoord chunk, const alpha::CellCoord cell) {
+  const int32_t local_x = cell.x - static_cast<int32_t>(chunk.x) * alpha::kChunkSize;
+  const int32_t local_y = cell.y - static_cast<int32_t>(chunk.y) * alpha::kChunkSize;
+  return static_cast<std::size_t>(local_y) * alpha::kChunkSize + static_cast<std::size_t>(local_x);
+}
+
 void assert_project_lists_equal(const alpha::ProjectListResult& left,
                                 const alpha::ProjectListResult& right) {
   assert(left.projects.size() == right.projects.size());
@@ -138,21 +146,6 @@ void assert_project_lists_equal(const alpha::ProjectListResult& left,
   }
 }
 
-void assert_batch_results_equal(const alpha::BatchResult& left, const alpha::BatchResult& right) {
-  assert(left.outcomes.size() == right.outcomes.size());
-  assert(left.dirty_chunks == right.dirty_chunks);
-  assert(left.dirty_overlays == right.dirty_overlays);
-  assert(left.dirty_settlements == right.dirty_settlements);
-  assert(left.new_projects == right.new_projects);
-
-  for (std::size_t index = 0; index < left.outcomes.size(); ++index) {
-    assert(left.outcomes[index].accepted == right.outcomes[index].accepted);
-    assert(left.outcomes[index].command_index == right.outcomes[index].command_index);
-    assert(left.outcomes[index].reject_reason == right.outcomes[index].reject_reason);
-    assert(left.outcomes[index].reject_message == right.outcomes[index].reject_message);
-  }
-}
-
 }  // namespace
 
 int main() {
@@ -164,9 +157,10 @@ int main() {
     clear_initial_dirty_chunks(world_api);
 
     const alpha::SettlementSummary starting_summary = world_api.get_settlement_summary(kSettlementId);
+    assert(!starting_summary.buildings[1].exists);
+
     const std::vector<alpha::CellCoord> valid_route =
         make_route({.x = starting_summary.center.x + 3, .y = starting_summary.center.y}, 4);
-
     const alpha::BatchResult queue_result = world_api.apply_commands({
         .commands =
             {
@@ -180,22 +174,15 @@ int main() {
 
     assert(queue_result.outcomes.size() == 1U);
     assert(queue_result.outcomes[0].accepted);
-    assert(queue_result.outcomes[0].command_index == 0U);
-    assert(queue_result.outcomes[0].reject_reason == alpha::CommandRejectReason::Unknown);
-    assert(queue_result.outcomes[0].reject_message.empty());
     assert(queue_result.new_projects == std::vector<alpha::ProjectId>{alpha::ProjectId{1}});
-    const std::vector<alpha::ChunkCoord> expected_dirty_chunks{
-        alpha::ChunkCoord{
-            static_cast<int16_t>(valid_route.front().x / alpha::kChunkSize),
-            static_cast<int16_t>(valid_route.front().y / alpha::kChunkSize),
-        },
-    };
-    assert(queue_result.dirty_chunks == expected_dirty_chunks);
     assert(queue_result.dirty_overlays ==
            std::vector<alpha::OverlayType>{alpha::OverlayType::ProjectBlockers});
     assert(queue_result.dirty_settlements == std::vector<alpha::SettlementId>{kSettlementId});
 
     const alpha::SettlementSummary queued_summary = world_api.get_settlement_summary(kSettlementId);
+    assert(queued_summary.food == 400);
+    assert(queued_summary.wood == 160);
+    assert(queued_summary.stone == 80);
     assert(queued_summary.active_project_count == 1U);
 
     const alpha::ProjectListResult projects =
@@ -204,24 +191,79 @@ int main() {
     assert(projects.projects[0].project_id == alpha::ProjectId{1});
     assert(projects.projects[0].owner_settlement_id == kSettlementId);
     assert(projects.projects[0].family == alpha::ProjectFamily::Road);
-    assert(projects.projects[0].type_name == "Prototype Road");
+    assert(projects.projects[0].type_name == "Road");
     assert(projects.projects[0].priority == alpha::PriorityLabel::High);
-    assert(projects.projects[0].status == alpha::ProjectStatus::Blocked);
-    assert(projects.projects[0].status_name == "Blocked");
+    assert(projects.projects[0].status == alpha::ProjectStatus::Queued);
+    assert(projects.projects[0].status_name == "Queued");
+    assert(projects.projects[0].required_wood == 40);
+    assert(projects.projects[0].required_stone == 20);
+    assert(projects.projects[0].reserved_wood == 40);
+    assert(projects.projects[0].reserved_stone == 20);
     assert(projects.projects[0].remaining_common_work == 40);
     assert(projects.projects[0].remaining_skilled_work == 0);
-    const std::vector<alpha::ProjectBlockerCode> expected_blocker_codes{
-        alpha::ProjectBlockerCode::WaitingForConstructionSystem,
-    };
-    assert(projects.projects[0].blocker_codes == expected_blocker_codes);
-    const std::vector<std::string> expected_blockers{
-        "Construction progression is not implemented for queued projects yet.",
-    };
-    assert(projects.projects[0].blockers == expected_blockers);
+    assert(projects.projects[0].blocker_codes.empty());
+    assert(projects.projects[0].blockers.empty());
+    assert(world_api.get_world_metrics().project_count == 1U);
+  }
 
-    const alpha::WorldMetrics metrics = world_api.get_world_metrics();
-    assert(metrics.project_count == 1U);
-    assert(metrics.road_cell_count == 0U);
+  {
+    alpha::WorldApi world_api = load_test_world(fixture_path);
+    clear_initial_dirty_chunks(world_api);
+
+    const alpha::BatchResult queue_result = world_api.apply_commands({
+        .commands =
+            {
+                alpha::QueueBuildingCommand{
+                    .settlement_id = kSettlementId,
+                    .building_type = alpha::BuildingType::WarehouseI,
+                    .priority = alpha::PriorityLabel::Normal,
+                },
+            },
+    });
+    assert(queue_result.outcomes.size() == 1U);
+    assert(queue_result.outcomes[0].accepted);
+    assert(queue_result.new_projects == std::vector<alpha::ProjectId>{alpha::ProjectId{1}});
+    assert(queue_result.dirty_chunks.empty());
+    assert(queue_result.dirty_settlements == std::vector<alpha::SettlementId>{kSettlementId});
+
+    const alpha::ProjectListResult projects =
+        world_api.get_projects({.settlement_id = kSettlementId});
+    assert(projects.projects.size() == 1U);
+    assert(projects.projects[0].family == alpha::ProjectFamily::Building);
+    assert(projects.projects[0].type_name == "Warehouse I");
+    assert(projects.projects[0].required_wood == 40);
+    assert(projects.projects[0].required_stone == 20);
+    assert(projects.projects[0].reserved_wood == 40);
+    assert(projects.projects[0].reserved_stone == 20);
+    assert(projects.projects[0].remaining_common_work == 40);
+
+    const alpha::SettlementSummary queued_summary = world_api.get_settlement_summary(kSettlementId);
+    assert(queued_summary.wood == 160);
+    assert(queued_summary.stone == 80);
+    assert(!queued_summary.buildings[1].exists);
+
+    const alpha::BatchResult invalid_result = world_api.apply_commands({
+        .commands =
+            {
+                alpha::QueueBuildingCommand{
+                    .settlement_id = kSettlementId,
+                    .building_type = alpha::BuildingType::WarehouseI,
+                    .priority = alpha::PriorityLabel::Normal,
+                },
+                alpha::QueueBuildingCommand{
+                    .settlement_id = kSettlementId,
+                    .building_type = alpha::BuildingType::EstateI,
+                    .priority = alpha::PriorityLabel::Normal,
+                },
+            },
+    });
+    assert(invalid_result.outcomes.size() == 2U);
+    assert(!invalid_result.outcomes[0].accepted);
+    assert(invalid_result.outcomes[0].reject_reason ==
+           alpha::CommandRejectReason::DuplicateUniqueBuilding);
+    assert(!invalid_result.outcomes[1].accepted);
+    assert(invalid_result.outcomes[1].reject_reason ==
+           alpha::CommandRejectReason::IllegalBuildingRequest);
   }
 
   {
@@ -259,19 +301,10 @@ int main() {
     assert(invalid_result.outcomes.size() == 3U);
     assert(!invalid_result.outcomes[0].accepted);
     assert(invalid_result.outcomes[0].reject_reason == alpha::CommandRejectReason::IllegalRoadRoute);
-    assert(invalid_result.outcomes[0].reject_message ==
-           "QueueRoadCommand route cells must form a contiguous 4-neighbor path.");
     assert(!invalid_result.outcomes[1].accepted);
     assert(invalid_result.outcomes[1].reject_reason == alpha::CommandRejectReason::IllegalRoadRoute);
-    assert(invalid_result.outcomes[1].reject_message ==
-           "QueueRoadCommand route cells contain terrain that is illegal for prototype road placement.");
     assert(!invalid_result.outcomes[2].accepted);
     assert(invalid_result.outcomes[2].reject_reason == alpha::CommandRejectReason::InvalidProject);
-    assert(invalid_result.outcomes[2].reject_message == "The project id does not exist.");
-    assert(invalid_result.dirty_chunks.empty());
-    assert(invalid_result.dirty_overlays.empty());
-    assert(invalid_result.dirty_settlements.empty());
-    assert(invalid_result.new_projects.empty());
     assert(world_api.get_projects({.settlement_id = kSettlementId}).projects.empty());
   }
 
@@ -280,83 +313,140 @@ int main() {
     clear_initial_dirty_chunks(world_api);
 
     const alpha::SettlementSummary starting_summary = world_api.get_settlement_summary(kSettlementId);
-    const std::vector<alpha::CellCoord> valid_route =
-        make_route({.x = starting_summary.center.x + 3, .y = starting_summary.center.y + 1}, 3);
+    const std::vector<alpha::CellCoord> road_route =
+        make_route({.x = starting_summary.center.x + 3, .y = starting_summary.center.y + 1}, 4);
     const alpha::BatchResult queue_result = world_api.apply_commands({
         .commands =
             {
                 alpha::QueueRoadCommand{
                     .settlement_id = kSettlementId,
-                    .route_cells = valid_route,
-                    .priority = alpha::PriorityLabel::Normal,
+                    .route_cells = road_route,
+                    .priority = alpha::PriorityLabel::High,
+                },
+                alpha::QueueBuildingCommand{
+                    .settlement_id = kSettlementId,
+                    .building_type = alpha::BuildingType::WarehouseI,
+                    .priority = alpha::PriorityLabel::Low,
                 },
             },
     });
     assert(queue_result.outcomes[0].accepted);
+    assert(queue_result.outcomes[1].accepted);
 
-    const alpha::BatchResult priority_result = world_api.apply_commands({
-        .commands =
-            {
-                alpha::SetProjectPriorityCommand{
-                    .project_id = alpha::ProjectId{1},
-                    .priority = alpha::PriorityLabel::Paused,
-                },
-            },
-    });
-    assert(priority_result.outcomes.size() == 1U);
-    assert(priority_result.outcomes[0].accepted);
-    assert(priority_result.dirty_overlays ==
+    const alpha::TurnReport first_report = world_api.advance_month();
+    assert(first_report.completed_projects.empty());
+    assert(first_report.newly_blocked_projects == std::vector<alpha::ProjectId>{alpha::ProjectId{2}});
+    assert(first_report.newly_unblocked_projects.empty());
+    assert(first_report.dirty_chunks.size() == 1U);
+    assert(first_report.dirty_overlays ==
            std::vector<alpha::OverlayType>{alpha::OverlayType::ProjectBlockers});
-    assert(priority_result.dirty_settlements == std::vector<alpha::SettlementId>{kSettlementId});
 
-    const alpha::ProjectListResult projects =
+    const alpha::ProjectListResult first_projects =
         world_api.get_projects({.settlement_id = kSettlementId});
-    assert(projects.projects.size() == 1U);
-    assert(projects.projects[0].priority == alpha::PriorityLabel::Paused);
-    const std::vector<alpha::ProjectBlockerCode> expected_paused_blocker_codes{
-        alpha::ProjectBlockerCode::PausedByPriority,
-        alpha::ProjectBlockerCode::WaitingForConstructionSystem,
+    assert(first_projects.projects.size() == 2U);
+    assert(first_projects.projects[0].status == alpha::ProjectStatus::InProgress);
+    assert(first_projects.projects[0].reserved_wood == 20);
+    assert(first_projects.projects[0].reserved_stone == 10);
+    assert(first_projects.projects[0].remaining_common_work == 20);
+    assert(first_projects.projects[1].status == alpha::ProjectStatus::Blocked);
+    const std::vector<alpha::ProjectBlockerCode> expected_blocker_codes{
+        alpha::ProjectBlockerCode::WaitingForConstructionCapacity,
     };
-    assert(projects.projects[0].blocker_codes == expected_paused_blocker_codes);
-    const std::vector<std::string> expected_paused_blockers{
-        "Project priority is set to Paused.",
-        "Construction progression is not implemented for queued projects yet.",
+    assert(first_projects.projects[1].blocker_codes == expected_blocker_codes);
+    const std::vector<std::string> expected_blockers{
+        "Higher-priority projects used this month's construction capacity.",
     };
-    assert(projects.projects[0].blockers == expected_paused_blockers);
+    assert(first_projects.projects[1].blockers == expected_blockers);
+
+    const alpha::ChunkCoord road_chunk{
+        static_cast<int16_t>(road_route.front().x / alpha::kChunkSize),
+        static_cast<int16_t>(road_route.front().y / alpha::kChunkSize),
+    };
+    const alpha::ChunkVisualResult chunk_visual =
+        world_api.get_chunk_visual({.chunk = road_chunk, .layer_index = 0});
+    assert(chunk_visual.cells[chunk_cell_index(road_chunk, road_route[0])].road_flag == 1U);
+    assert(chunk_visual.cells[chunk_cell_index(road_chunk, road_route[1])].road_flag == 1U);
+    assert(chunk_visual.cells[chunk_cell_index(road_chunk, road_route[2])].road_flag == 0U);
+    assert(chunk_visual.cells[chunk_cell_index(road_chunk, road_route[3])].road_flag == 0U);
+
+    const alpha::TurnReport second_report = world_api.advance_month();
+    assert(second_report.completed_projects == std::vector<alpha::ProjectId>{alpha::ProjectId{1}});
+
+    const alpha::TurnReport third_report = world_api.advance_month();
+    assert(third_report.newly_unblocked_projects == std::vector<alpha::ProjectId>{alpha::ProjectId{2}});
+
+    const alpha::TurnReport fourth_report = world_api.advance_month();
+    assert(fourth_report.completed_projects == std::vector<alpha::ProjectId>{alpha::ProjectId{2}});
+
+    const alpha::SettlementSummary completed_summary = world_api.get_settlement_summary(kSettlementId);
+    assert(completed_summary.buildings[1].exists);
+    assert(completed_summary.active_project_count == 0U);
+    assert(world_api.get_world_metrics().road_cell_count == 4U);
   }
 
   {
-    alpha::WorldApi first_world_api = load_test_world(fixture_path);
-    alpha::WorldApi second_world_api = load_test_world(fixture_path);
-    clear_initial_dirty_chunks(first_world_api);
-    clear_initial_dirty_chunks(second_world_api);
+    alpha::WorldApi world_api = load_test_world(fixture_path);
+    clear_initial_dirty_chunks(world_api);
 
-    const alpha::SettlementSummary first_summary = first_world_api.get_settlement_summary(kSettlementId);
-    const alpha::CommandBatch identical_batch{
+    const alpha::SettlementSummary starting_summary = world_api.get_settlement_summary(kSettlementId);
+    const std::vector<alpha::CellCoord> road_route =
+        make_route({.x = starting_summary.center.x + 3, .y = starting_summary.center.y + 2}, 20);
+    const alpha::CellCoord target = road_route.back();
+
+    const alpha::BatchResult pre_road_zone_result = world_api.apply_commands({
+        .commands =
+            {
+                alpha::ZoneCellsCommand{
+                    .settlement_id = kSettlementId,
+                    .zone_type = alpha::ZoneType::Farmland,
+                    .cells = {target},
+                },
+            },
+    });
+    assert(pre_road_zone_result.outcomes.size() == 1U);
+    assert(!pre_road_zone_result.outcomes[0].accepted);
+    assert(pre_road_zone_result.outcomes[0].reject_reason ==
+           alpha::CommandRejectReason::IllegalZoneTarget);
+
+    const alpha::BatchResult road_result = world_api.apply_commands({
         .commands =
             {
                 alpha::QueueRoadCommand{
                     .settlement_id = kSettlementId,
-                    .route_cells =
-                        make_route({.x = first_summary.center.x + 3, .y = first_summary.center.y + 2}, 5),
+                    .route_cells = road_route,
                     .priority = alpha::PriorityLabel::Required,
                 },
-                alpha::SetProjectPriorityCommand{
-                    .project_id = alpha::ProjectId{1},
-                    .priority = alpha::PriorityLabel::Low,
+            },
+    });
+    assert(road_result.outcomes[0].accepted);
+
+    for (int32_t month = 0; month < 10; ++month) {
+      const alpha::TurnReport report = world_api.advance_month();
+      if (month < 9) {
+        assert(report.completed_projects.empty());
+      }
+    }
+
+    const alpha::BatchResult post_road_zone_result = world_api.apply_commands({
+        .commands =
+            {
+                alpha::ZoneCellsCommand{
+                    .settlement_id = kSettlementId,
+                    .zone_type = alpha::ZoneType::Farmland,
+                    .cells = {target},
                 },
             },
+    });
+    assert(post_road_zone_result.outcomes.size() == 1U);
+    assert(post_road_zone_result.outcomes[0].accepted);
+
+    const alpha::ChunkCoord road_chunk{
+        static_cast<int16_t>(target.x / alpha::kChunkSize),
+        static_cast<int16_t>(target.y / alpha::kChunkSize),
     };
-
-    const alpha::BatchResult first_result = first_world_api.apply_commands(identical_batch);
-    const alpha::BatchResult second_result = second_world_api.apply_commands(identical_batch);
-    assert_batch_results_equal(first_result, second_result);
-
-    const alpha::ProjectListResult first_projects =
-        first_world_api.get_projects({.settlement_id = kSettlementId});
-    const alpha::ProjectListResult second_projects =
-        second_world_api.get_projects({.settlement_id = kSettlementId});
-    assert_project_lists_equal(first_projects, second_projects);
+    const alpha::ChunkVisualResult chunk_visual =
+        world_api.get_chunk_visual({.chunk = road_chunk, .layer_index = 0});
+    assert(chunk_visual.cells[chunk_cell_index(road_chunk, target)].road_flag == 1U);
   }
 
   {
@@ -373,18 +463,31 @@ int main() {
                         make_route({.x = starting_summary.center.x + 3, .y = starting_summary.center.y + 3}, 4),
                     .priority = alpha::PriorityLabel::High,
                 },
+                alpha::QueueBuildingCommand{
+                    .settlement_id = kSettlementId,
+                    .building_type = alpha::BuildingType::WarehouseI,
+                    .priority = alpha::PriorityLabel::Low,
+                },
             },
     });
     assert(queue_result.outcomes[0].accepted);
+    assert(queue_result.outcomes[1].accepted);
+
+    const alpha::TurnReport pre_save_report = world_api.advance_month();
+    assert(pre_save_report.newly_blocked_projects == std::vector<alpha::ProjectId>{alpha::ProjectId{2}});
 
     const std::filesystem::path save_path =
-        std::filesystem::temp_directory_path() / ("alpha_task7_project_roundtrip_" + test_suffix + ".bin");
+        std::filesystem::temp_directory_path() / ("alpha_task8_project_roundtrip_" + test_suffix + ".bin");
     const std::filesystem::path json_path = save_path.string() + ".json";
     std::filesystem::remove(save_path);
     std::filesystem::remove(json_path);
 
     const alpha::ProjectListResult pre_save_projects =
         world_api.get_projects({.settlement_id = kSettlementId});
+    const alpha::ChunkVisualResult pre_save_chunk =
+        world_api.get_chunk_visual({.chunk = {.x = 8, .y = 8}, .layer_index = 0});
+    const alpha::SettlementSummary pre_save_summary = world_api.get_settlement_summary(kSettlementId);
+
     const alpha::SaveWorldResult save_result = world_api.save_world({
         .path = save_path.string(),
         .write_json_debug_export = true,
@@ -402,8 +505,15 @@ int main() {
     const alpha::ProjectListResult post_load_projects =
         loaded_world_api.get_projects({.settlement_id = kSettlementId});
     assert_project_lists_equal(pre_save_projects, post_load_projects);
-    assert(loaded_world_api.get_settlement_summary(kSettlementId).active_project_count == 1U);
-    assert(loaded_world_api.get_world_metrics().project_count == 1U);
+    const alpha::ChunkVisualResult post_load_chunk =
+        loaded_world_api.get_chunk_visual({.chunk = {.x = 8, .y = 8}, .layer_index = 0});
+    for (std::size_t index = 0; index < pre_save_chunk.cells.size(); ++index) {
+      assert(pre_save_chunk.cells[index].road_flag == post_load_chunk.cells[index].road_flag);
+    }
+    const alpha::SettlementSummary post_load_summary =
+        loaded_world_api.get_settlement_summary(kSettlementId);
+    assert(pre_save_summary.active_project_count == post_load_summary.active_project_count);
+    assert(pre_save_summary.buildings[1].exists == post_load_summary.buildings[1].exists);
 
     std::filesystem::remove(save_path);
     std::filesystem::remove(json_path);

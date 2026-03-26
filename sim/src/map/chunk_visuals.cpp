@@ -1,6 +1,8 @@
 #include "alpha/map/chunk_visuals.hpp"
 
 #include "alpha/api/constants.hpp"
+#include "alpha/projects/project_progress.hpp"
+#include "alpha/world/world_state.hpp"
 
 namespace alpha::map {
 namespace {
@@ -41,12 +43,13 @@ uint8_t terrain_color_index_for_cell(const MapCell& cell) noexcept {
 
 }  // namespace
 
-ChunkVisualResult build_chunk_visual_result(const MapGrid& map_grid, const ChunkVisualQuery& query) {
+ChunkVisualResult build_chunk_visual_result(const world::WorldState& world_state,
+                                            const ChunkVisualQuery& query) {
   ChunkVisualResult result{
       .chunk = query.chunk,
   };
 
-  if (!map_grid.contains_chunk(query.chunk)) {
+  if (!world_state.map_grid.contains_chunk(query.chunk)) {
     return result;
   }
 
@@ -60,11 +63,15 @@ ChunkVisualResult build_chunk_visual_result(const MapGrid& map_grid, const Chunk
     for (int32_t local_x = 0; local_x < kChunkSize; ++local_x) {
       const int32_t world_x = origin_x + local_x;
       const int32_t world_y = origin_y + local_y;
-      const MapCell& cell = map_grid.cell(world_x, world_y);
+      const MapCell& cell = world_state.map_grid.cell(world_x, world_y);
+      const uint32_t cell_index =
+          static_cast<uint32_t>(flatten_cell_index(world_state.map_width, world_x, world_y));
 
       result.cells[static_cast<std::size_t>(local_y) * kChunkSize + static_cast<std::size_t>(local_x)] =
           ChunkVisualCell{
               .terrain_color_index = terrain_color_index_for_cell(cell),
+              .road_flag = static_cast<uint8_t>(
+                  projects::is_road_built(world_state, cell_index) ? 1U : 0U),
           };
     }
   }

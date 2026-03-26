@@ -125,6 +125,27 @@ bool read_u32_vector(std::istream& stream, std::vector<uint32_t>& values) {
   return true;
 }
 
+bool write_u32_values(std::ostream& stream, const std::vector<uint32_t>& values) {
+  for (const uint32_t value : values) {
+    if (!write_integer<uint32_t>(stream, value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool read_n_u32_values(std::istream& stream, const uint32_t count, std::vector<uint32_t>& values) {
+  values.assign(count, 0U);
+  for (uint32_t index = 0; index < count; ++index) {
+    if (!read_integer<uint32_t>(stream, values[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool write_u16_vector(std::ostream& stream, const std::vector<uint16_t>& values) {
   if (!write_integer<uint32_t>(stream, static_cast<uint32_t>(values.size()))) {
     return false;
@@ -245,6 +266,8 @@ const char* project_blocker_code_name(const ProjectBlockerCode blocker_code) noe
       return "WaitingForConstructionSystem";
     case ProjectBlockerCode::PausedByPriority:
       return "PausedByPriority";
+    case ProjectBlockerCode::WaitingForConstructionCapacity:
+      return "WaitingForConstructionCapacity";
   }
 
   return "Unknown";
@@ -482,7 +505,19 @@ std::string build_json_debug_export(const world::WorldState& world_state) {
   json << "  ],\n";
   json << "  \"farm_plot_snapshots\": [],\n";
   json << "  \"road_snapshot\": {\n";
-  json << "    \"road_cell_indices\": []\n";
+  json << "    \"road_cell_indices\": [";
+  bool first_road_cell = true;
+  for (uint32_t cell_index = 0; cell_index < world_state.road_cells.size(); ++cell_index) {
+    if (world_state.road_cells[cell_index] == 0U) {
+      continue;
+    }
+    if (!first_road_cell) {
+      json << ", ";
+    }
+    json << cell_index;
+    first_road_cell = false;
+  }
+  json << "]\n";
   json << "  },\n";
   json << "  \"project_snapshots\": [\n";
 
@@ -678,7 +713,17 @@ bool serialize_world(std::ostream& stream, const world::WorldState& world_state)
     }
   }
 
-  if (!write_integer<uint32_t>(stream, 0U) || !write_integer<uint32_t>(stream, 0U) ||
+  std::vector<uint32_t> road_cell_indices;
+  road_cell_indices.reserve(world_state.road_cell_count);
+  for (uint32_t cell_index = 0; cell_index < world_state.road_cells.size(); ++cell_index) {
+    if (world_state.road_cells[cell_index] != 0U) {
+      road_cell_indices.push_back(cell_index);
+    }
+  }
+
+  if (!write_integer<uint32_t>(stream, 0U) ||
+      !write_integer<uint32_t>(stream, static_cast<uint32_t>(road_cell_indices.size())) ||
+      !write_u32_values(stream, road_cell_indices) ||
       !write_integer<uint32_t>(stream, static_cast<uint32_t>(world_state.projects.size()))) {
     return false;
   }
@@ -915,15 +960,29 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
   uint32_t plot_count = 0;
   uint32_t road_cell_count = 0;
   uint32_t project_count = 0;
+  std::vector<uint32_t> road_cell_indices;
   if (!read_integer(stream, plot_count) || !read_integer(stream, road_cell_count) ||
+      !read_n_u32_values(stream, road_cell_count, road_cell_indices) ||
       !read_integer(stream, project_count)) {
     result.error_message = "Failed to read trailing snapshot section counts.";
     return false;
   }
-  if (plot_count != 0U || road_cell_count != 0U) {
-    result.error_message =
-        "This Milestone 1 save/load path supports only saves with zero plots and built roads.";
+  if (plot_count != 0U) {
+    result.error_message = "This Milestone 1 save/load path supports only saves with zero plots.";
     return false;
+  }
+
+  world_state.road_cells.assign(cell_count, 0U);
+  for (const uint32_t road_cell_index : road_cell_indices) {
+    if (road_cell_index >= cell_count) {
+      result.error_message = "A saved road snapshot references an out-of-bounds cell index.";
+      return false;
+    }
+    if (world_state.road_cells[road_cell_index] != 0U) {
+      result.error_message = "A saved road snapshot contains duplicate road cells.";
+      return false;
+    }
+    world_state.road_cells[road_cell_index] = 1U;
   }
 
   world_state.projects.clear();
@@ -969,16 +1028,29 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
       return false;
     }
 
-    if (project.route_cell_indices.empty()) {
-      result.error_message = "A saved road project must contain at least one route cell.";
+    if ((project.family == ProjectFamily::Road &&
+         project.type != static_cast<uint8_t>(projects::ProjectTypeCode::Road)) ||
+        (project.family == ProjectFamily::Building &&
+         project.type != static_cast<uint8_t>(projects::ProjectTypeCode::WarehouseI))) {
+      result.error_message = "A saved project snapshot contains an unsupported family/type combination.";
       return false;
     }
 
-    for (const uint32_t route_cell_index : project.route_cell_indices) {
-      if (route_cell_index >= cell_count) {
-        result.error_message = "A saved project references an out-of-bounds route cell index.";
+    if (project.family == ProjectFamily::Road) {
+      if (project.route_cell_indices.empty()) {
+        result.error_message = "A saved road project must contain at least one route cell.";
         return false;
       }
+
+      for (const uint32_t route_cell_index : project.route_cell_indices) {
+        if (route_cell_index >= cell_count) {
+          result.error_message = "A saved project references an out-of-bounds route cell index.";
+          return false;
+        }
+      }
+    } else if (!project.route_cell_indices.empty()) {
+      result.error_message = "A saved building project should not persist a route path.";
+      return false;
     }
 
     project.blocker_codes.clear();
@@ -992,7 +1064,6 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
       project.blocker_codes.push_back(blocker_code);
     }
 
-    projects::refresh_project_derived_state(project);
     max_project_id = std::max(max_project_id, project.project_id.value);
     world_state.projects.push_back(std::move(project));
   }
@@ -1006,7 +1077,7 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
   zones::rebuild_zone_state(world_state);
   world_state.plot_count = 0;
   world_state.project_count = static_cast<uint32_t>(world_state.projects.size());
-  world_state.road_cell_count = 0;
+  world_state.road_cell_count = road_cell_count;
   world_state.dirty_chunks = world::make_all_chunk_coords(world_state.map_width, world_state.map_height);
 
   result.ok = true;

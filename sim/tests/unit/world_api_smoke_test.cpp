@@ -180,7 +180,7 @@ int main() {
   assert(settlement_summary.buildings[0].exists);
   assert(!settlement_summary.buildings[0].staffed);
   assert(settlement_summary.buildings[1].building_type == alpha::BuildingType::WarehouseI);
-  assert(settlement_summary.buildings[1].exists);
+  assert(!settlement_summary.buildings[1].exists);
   assert(!settlement_summary.buildings[1].staffed);
 
   const alpha::SettlementSummary repeated_settlement_summary =

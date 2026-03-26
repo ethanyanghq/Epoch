@@ -13,6 +13,7 @@
 
 #include "alpha/api/constants.hpp"
 #include "alpha/map/map_types.hpp"
+#include "alpha/projects/project_progress.hpp"
 #include "alpha/settlements/settlement_types.hpp"
 #include "alpha/world/world_state.hpp"
 
@@ -203,7 +204,45 @@ int32_t water_penalty_centi(const uint8_t water) noexcept {
   }
 }
 
-int32_t movement_cost_centi(const map::MapCell& cell) noexcept {
+int32_t road_slope_penalty_centi(const uint8_t slope) noexcept {
+  switch (slope) {
+    case 0:
+      return 0;
+    case 1:
+      return 5;
+    case 2:
+      return 15;
+    case 3:
+      return 35;
+    default:
+      return std::numeric_limits<int32_t>::max();
+  }
+}
+
+int32_t road_water_penalty_centi(const uint8_t water) noexcept {
+  switch (water) {
+    case 0:
+      return 0;
+    case 1:
+      return 25;
+    default:
+      return std::numeric_limits<int32_t>::max();
+  }
+}
+
+int32_t movement_cost_centi(const world::WorldState& world_state, const uint32_t cell_index,
+                            const map::MapCell& cell) noexcept {
+  if (projects::is_road_built(world_state, cell_index)) {
+    const int32_t slope_penalty = road_slope_penalty_centi(cell.slope);
+    const int32_t water_penalty = road_water_penalty_centi(cell.water);
+    if (slope_penalty == std::numeric_limits<int32_t>::max() ||
+        water_penalty == std::numeric_limits<int32_t>::max()) {
+      return std::numeric_limits<int32_t>::max();
+    }
+
+    return 35 + slope_penalty + water_penalty;
+  }
+
   const int32_t slope_penalty = slope_penalty_centi(cell.slope);
   const int32_t water_penalty = water_penalty_centi(cell.water);
   if (slope_penalty == std::numeric_limits<int32_t>::max() ||
@@ -254,7 +293,8 @@ std::vector<int32_t> compute_reach_costs(const world::WorldState& world_state,
       }
 
       const map::MapCell& neighbor_cell = world_state.map_grid.cell(neighbor_x, neighbor_y);
-      const int32_t step_cost = movement_cost_centi(neighbor_cell);
+      const uint32_t neighbor_index = to_cell_index(world_state, neighbor_x, neighbor_y);
+      const int32_t step_cost = movement_cost_centi(world_state, neighbor_index, neighbor_cell);
       if (step_cost == std::numeric_limits<int32_t>::max()) {
         continue;
       }
@@ -264,7 +304,6 @@ std::vector<int32_t> compute_reach_costs(const world::WorldState& world_state,
         continue;
       }
 
-      const uint32_t neighbor_index = to_cell_index(world_state, neighbor_x, neighbor_y);
       if (neighbor_cost >= costs[neighbor_index]) {
         continue;
       }
