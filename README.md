@@ -12,17 +12,18 @@ The repo currently provides:
 - locked planning and handoff documents
 - a normalized monorepo structure for `game/`, `sim/`, `extension/`, `data/`, `tools/`, and `ci/`
 - buildable CMake entrypoints for the current native modules
-- placeholder local scripts for build, test, export, and formatting
+- local scripts for native build, native test, macOS export, and formatting entrypoints
 - a GitHub Actions workflow that validates repository structure and required docs
-- a buildable `alpha_sim` static library and `alpha_godot_bridge` static library
+- a buildable `alpha_sim` static library
+- a real `godot-cpp`-backed `alpha_godot_bridge` GDExtension build path
+- a minimal Godot project shell that can initialize the native bridge, create/load/save a world, and advance one month
 - a minimal deterministic world lifecycle with chunk visual queries and smoke-test coverage
 
 What it does **not** provide yet:
-- a playable Godot application
+- a rendered gameplay map or wider Milestone 1 interaction surface
 - full gameplay systems
 - the full end-state bridge/query/command surface described in the design docs
-- save/load implementation
-- a real packaging or formatter pipeline
+- a production-ready packaging or formatter pipeline
 
 ## Project Direction
 
@@ -105,12 +106,13 @@ tools/scripts/format.sh
 ```
 
 Current behavior:
-- `build_macos.sh` checks that baseline files and module entrypoints exist
-- `run_tests.sh` checks required directories and documentation
-- `export_macos.sh` reserves the canonical macOS export entrypoint
+- `build_macos.sh` builds the sim target and the macOS GDExtension and can launch the Godot shell with `--run`
+- `run_tests.sh` configures, builds, and runs the current sim test suite with CTest
+- `export_macos.sh` builds the release GDExtension and asks Godot to export the macOS app bundle
 - `format.sh` reserves the canonical formatting entrypoint
 
-These scripts are intentionally lightweight right now. They validate repository expectations; they do not build or export a game shell yet.
+The native build/export scripts require a local Godot 4.x executable and a matching local
+`godot-cpp` checkout. They fail clearly when either prerequisite is missing.
 
 ### CI
 
@@ -137,4 +139,6 @@ If you are new to the project, read in this order:
 
 ## Status Summary
 
-Epoch is in an early implementation stage: the end-state design is documented, and the native sim/bridge spine plus deterministic map/chunk-query subset are landed. The current repo is best understood as a buildable foundation for Alpha, not as a finished or partially playable product.
+Epoch remains an early Milestone 1 implementation, but the repo now includes the first real
+Godot shell and GDExtension registration path in addition to the native sim/bridge spine. It is
+still a stack-proofing vertical slice, not a feature-complete or polished game.

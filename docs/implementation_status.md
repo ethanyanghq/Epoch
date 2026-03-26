@@ -28,7 +28,7 @@ For the callable API and runtime behavior that exist today, prefer:
 
 The native codebase currently includes:
 - a buildable `alpha_sim` static library
-- a buildable `alpha_godot_bridge` static library
+- a real `alpha_godot_bridge` shared-library GDExtension build path through `godot-cpp`
 - a minimal sim-owned `WorldApi`
 - deterministic `create_world()` support for fixed `1024 x 1024` worlds
 - sim-owned binary save/load round-tripping for the current Milestone 1 native subset
@@ -61,6 +61,12 @@ The native codebase currently includes:
   current reach/zoning calculations
 - zone save/load persistence with stable zone ids and authoritative ownership
 - project and built-road save/load persistence with stable project ids and live progress/status
+- a first Godot desktop shell under `game/` with:
+  - `project.godot`
+  - `res://addons/alpha/alpha.gdextension`
+  - `app_root.tscn`
+  - a thin GDScript `WorldBridge` wrapper
+  - create/load/save/advance-month calls routed into the native bridge
 - native tests covering world creation, chunk queries, overlay queries, settlement summary
   reads, metrics, month advancement, save/load equivalence, zoning mutations, zoning
   save/load equivalence, project queueing, construction progression, blocker reporting, and
@@ -77,18 +83,25 @@ The currently exposed sim/bridge methods are:
 - `get_chunk_visual(ChunkVisualQuery)`
 - `get_overlay_chunk(OverlayChunkQuery)`
 - `get_settlement_summary(SettlementId)`
+- `get_settlement_detail(SettlementId)`
+- `get_projects(ProjectListQuery)`
 - `get_world_metrics()`
+
+The registered `AlphaWorldBridge` Godot class exposes these through one-to-one `Dictionary`
+and scalar wrappers. The current Godot wrapper for `apply_commands()` uses an explicit command
+`type` string discriminator because GDScript cannot construct the native C++ command variant
+directly.
 
 ## Not implemented yet
 
 The following end-state interfaces and systems are still planned and should not be treated as
 currently callable unless their code lands:
-- settlement detail queries
 - route debug queries
 - Estate I as a real building project path
 - founding, logistics, and settlement simulation beyond the current Milestone 1 zoning and
   construction slice
-- real Godot binding registration through `godot-cpp`
+- chunked map rendering, camera controls, hover inspection, and overlay presentation in the
+  Godot shell
 
 ## Working rule for documentation
 
