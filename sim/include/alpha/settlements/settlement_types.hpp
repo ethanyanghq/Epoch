@@ -21,6 +21,14 @@ struct BuildingState {
   bool staffed = false;
 };
 
+struct LaborState {
+  int32_t last_serf_fill = 0;
+  int32_t last_artisan_fill = 0;
+  int32_t last_noble_fill = 0;
+  int32_t reassignment_budget_tenths = 0;
+  int32_t protected_food_floor_serfs = 0;
+};
+
 struct SettlementState {
   SettlementId settlement_id;
   CellCoord center;
@@ -30,6 +38,9 @@ struct SettlementState {
   int32_t development_pressure_tenths = 0;
   StockpileState stockpile;
   std::array<BuildingState, 2> buildings{};
+  LaborState labor_state;
+  SettlementId founding_source_settlement_id;
+  bool has_founding_source = false;
   bool food_shortage_flag = false;
 };
 

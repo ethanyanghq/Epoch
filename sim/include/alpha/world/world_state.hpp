@@ -15,13 +15,18 @@ struct CalendarState {
   MonthIndex month = 1;
 };
 
+struct WorldRngState {
+  uint64_t seed = 0;
+  uint64_t stream_state = 0;
+};
+
 struct WorldState {
   uint64_t terrain_seed = 0;
-  uint64_t gameplay_seed = 0;
   uint16_t map_width = 0;
   uint16_t map_height = 0;
   std::string generation_config_path;
   CalendarState calendar;
+  WorldRngState world_rng;
   map::MapGrid map_grid;
   std::vector<ChunkCoord> dirty_chunks;
   std::vector<settlements::SettlementState> settlements;

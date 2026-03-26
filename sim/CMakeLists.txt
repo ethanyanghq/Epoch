@@ -14,6 +14,7 @@ add_library(alpha_sim STATIC
   src/map/chunk_visuals.cpp
   src/map/map_grid.cpp
   src/map/overlay_chunks.cpp
+  src/save/save_io.cpp
   src/settlements/settlement_types.cpp
   src/world/world_state.cpp
 )
@@ -30,10 +31,20 @@ if(BUILD_TESTING)
     tests/unit/world_api_smoke_test.cpp
   )
 
+  add_executable(alpha_sim_save_load_test
+    tests/unit/save_load_roundtrip_test.cpp
+  )
+
   target_link_libraries(alpha_sim_smoke_test
     PRIVATE
       alpha_sim
   )
 
+  target_link_libraries(alpha_sim_save_load_test
+    PRIVATE
+      alpha_sim
+  )
+
   add_test(NAME alpha_sim_smoke_test COMMAND alpha_sim_smoke_test)
+  add_test(NAME alpha_sim_save_load_test COMMAND alpha_sim_save_load_test)
 endif()

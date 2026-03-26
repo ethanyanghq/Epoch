@@ -6,6 +6,14 @@ alpha::CreateWorldResult AlphaWorldBridge::create_world(const alpha::WorldCreate
   return world_api_.create_world(params);
 }
 
+alpha::LoadWorldResult AlphaWorldBridge::load_world(const alpha::LoadWorldParams& params) {
+  return world_api_.load_world(params);
+}
+
+alpha::SaveWorldResult AlphaWorldBridge::save_world(const alpha::SaveWorldParams& params) const {
+  return world_api_.save_world(params);
+}
+
 alpha::TurnReport AlphaWorldBridge::advance_month() {
   return world_api_.advance_month();
 }

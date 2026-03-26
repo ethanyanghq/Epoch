@@ -11,6 +11,8 @@ namespace alpha::core {
 class Simulation final {
  public:
   CreateWorldResult create_world(const WorldCreateParams& params);
+  LoadWorldResult load_world(const LoadWorldParams& params);
+  SaveWorldResult save_world(const SaveWorldParams& params) const;
   TurnReport advance_month();
   ChunkVisualResult get_chunk_visual(const ChunkVisualQuery& query) const;
   OverlayChunkResult get_overlay_chunk(const OverlayChunkQuery& query) const;

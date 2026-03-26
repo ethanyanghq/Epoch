@@ -133,6 +133,9 @@ SettlementState make_starting_settlement(const map::MapGrid& map_grid) {
               .stone = kStartingStoneTenths,
           },
       .buildings = make_starting_buildings(),
+      .labor_state = {},
+      .founding_source_settlement_id = {},
+      .has_founding_source = false,
       .food_shortage_flag = false,
   };
 }

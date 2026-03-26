@@ -6,6 +6,7 @@
 
 #include "alpha/map/chunk_visuals.hpp"
 #include "alpha/map/overlay_chunks.hpp"
+#include "alpha/save/save_io.hpp"
 #include "alpha/settlements/settlement_types.hpp"
 
 namespace alpha::core {
@@ -42,10 +43,13 @@ CreateWorldResult Simulation::create_world(const WorldCreateParams& params) {
 
   world::WorldState world_state;
   world_state.terrain_seed = params.terrain_seed;
-  world_state.gameplay_seed = params.gameplay_seed;
   world_state.map_width = params.map_width;
   world_state.map_height = params.map_height;
   world_state.generation_config_path = params.generation_config_path;
+  world_state.world_rng = {
+      .seed = params.gameplay_seed,
+      .stream_state = params.gameplay_seed,
+  };
   world_state.dirty_chunks = world::make_all_chunk_coords(params.map_width, params.map_height);
 
   if (!world_state.map_grid.initialize(params.map_width, params.map_height, params.terrain_seed)) {
@@ -62,6 +66,35 @@ CreateWorldResult Simulation::create_world(const WorldCreateParams& params) {
       .ok = true,
       .dirty_chunks = world_state_->dirty_chunks,
   };
+}
+
+LoadWorldResult Simulation::load_world(const LoadWorldParams& params) {
+  save::LoadWorldStateResult load_result = save::load_world(params);
+  if (!load_result.ok) {
+    return {
+        .ok = false,
+        .error_message = load_result.error_message,
+        .format_version = load_result.format_version,
+    };
+  }
+
+  world_state_ = std::move(load_result.world_state);
+  return {
+      .ok = true,
+      .format_version = load_result.format_version,
+      .dirty_chunks = world_state_->dirty_chunks,
+  };
+}
+
+SaveWorldResult Simulation::save_world(const SaveWorldParams& params) const {
+  if (!world_state_.has_value()) {
+    return {
+        .ok = false,
+        .error_message = "No world is loaded to save.",
+    };
+  }
+
+  return save::save_world(*world_state_, params);
 }
 
 TurnReport Simulation::advance_month() {

@@ -11,6 +11,7 @@ namespace alpha::map {
 class MapGrid final {
  public:
   bool initialize(uint16_t width, uint16_t height, uint64_t terrain_seed);
+  bool initialize_from_cells(uint16_t width, uint16_t height, std::vector<MapCell> cells);
 
   [[nodiscard]] bool empty() const noexcept;
   [[nodiscard]] uint16_t width() const noexcept;

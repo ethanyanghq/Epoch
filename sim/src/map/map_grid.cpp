@@ -204,6 +204,24 @@ bool MapGrid::initialize(const uint16_t width, const uint16_t height, const uint
   return true;
 }
 
+bool MapGrid::initialize_from_cells(const uint16_t width, const uint16_t height,
+                                    std::vector<MapCell> cells) {
+  if (width == 0 || height == 0) {
+    return false;
+  }
+
+  const std::size_t expected_cell_count =
+      static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+  if (cells.size() != expected_cell_count) {
+    return false;
+  }
+
+  width_ = width;
+  height_ = height;
+  cells_ = std::move(cells);
+  return true;
+}
+
 bool MapGrid::empty() const noexcept {
   return cells_.empty();
 }

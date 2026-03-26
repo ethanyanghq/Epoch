@@ -6,6 +6,14 @@ CreateWorldResult WorldApi::create_world(const WorldCreateParams& params) {
   return simulation_.create_world(params);
 }
 
+LoadWorldResult WorldApi::load_world(const LoadWorldParams& params) {
+  return simulation_.load_world(params);
+}
+
+SaveWorldResult WorldApi::save_world(const SaveWorldParams& params) const {
+  return simulation_.save_world(params);
+}
+
 TurnReport WorldApi::advance_month() {
   return simulation_.advance_month();
 }

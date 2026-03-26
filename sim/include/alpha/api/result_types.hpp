@@ -76,6 +76,28 @@ struct CreateWorldResult {
   std::vector<ChunkCoord> dirty_chunks;
 };
 
+struct LoadWorldParams {
+  std::string path;
+};
+
+struct LoadWorldResult {
+  bool ok = false;
+  std::string error_message;
+  uint32_t format_version = 0;
+  std::vector<ChunkCoord> dirty_chunks;
+};
+
+struct SaveWorldParams {
+  std::string path;
+  bool write_json_debug_export = false;
+};
+
+struct SaveWorldResult {
+  bool ok = false;
+  std::string error_message;
+  std::string json_debug_path;
+};
+
 struct PhaseTiming {
   std::string phase_name;
   uint32_t duration_ms = 0;
