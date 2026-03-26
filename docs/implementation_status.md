@@ -31,6 +31,7 @@ The native codebase currently includes:
 - a buildable `alpha_godot_bridge` static library
 - a minimal sim-owned `WorldApi`
 - deterministic `create_world()` support for fixed `1024 x 1024` worlds
+- sim-owned binary save/load round-tripping for the current Milestone 1 native subset
 - deterministic calendar advancement through `advance_month()`
 - sim-owned terrain/map storage for:
   - elevation
@@ -43,13 +44,15 @@ The native codebase currently includes:
 - one deterministic sim-owned starting settlement created with a new world
 - `get_settlement_summary(SettlementId)` for the initial settlement summary read path
 - `get_world_metrics()` for current live world counters
-- a native smoke test covering world creation, chunk queries, overlay queries, settlement summary
-  reads, metrics, and month advancement
+- native tests covering world creation, chunk queries, overlay queries, settlement summary
+  reads, metrics, month advancement, and save/load equivalence
 
 ## Current public API surface
 
 The currently exposed sim/bridge methods are:
 - `create_world(WorldCreateParams)`
+- `load_world(LoadWorldParams)`
+- `save_world(SaveWorldParams)`
 - `advance_month()`
 - `get_chunk_visual(ChunkVisualQuery)`
 - `get_overlay_chunk(OverlayChunkQuery)`
@@ -60,13 +63,10 @@ The currently exposed sim/bridge methods are:
 
 The following end-state interfaces and systems are still planned and should not be treated as
 currently callable unless their code lands:
-- `load_world()`
-- `save_world()`
 - `apply_commands()`
 - settlement detail queries
 - project queries
 - route debug queries
-- save/load serialization
 - zoning, roads, construction, logistics, founding, and settlement simulation
 - real Godot binding registration through `godot-cpp`
 

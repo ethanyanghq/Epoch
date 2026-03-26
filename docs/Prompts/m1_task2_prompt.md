@@ -106,6 +106,11 @@ Acceptance criteria:
   - `docs/milestone_plan.md`
   - `docs/alpha_final_implementation_spec.md`
 
+Validation requirements:
+- before finalizing, run validation for the full Milestone 1 codebase landed up to this task, not just the newly added files
+- if any previously working Milestone 1 behavior regresses while doing this task, fix it as part of the task rather than treating it as out of scope
+- at minimum, validate the cumulative build and test surface that exists at this point and report exactly what was run
+
 Recommended tests:
 - valid world creation still succeeds for `1024x1024`
 - invalid world dimensions still fail
@@ -118,4 +123,5 @@ Final response requirements:
 - summarize exactly what was added
 - list any deviations from `docs/simulation_api.md`
 - identify any ambiguities or conflicts found in the docs
+- state what cumulative validation was run for all Milestone 1 code through this task
 - state the next immediate task after this one
