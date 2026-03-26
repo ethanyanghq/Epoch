@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
-echo "Running baseline repository checks..."
+echo "Running Alpha Milestone 1 native tests..."
 
 required_dirs=(
   "sim/tests/unit"
@@ -36,4 +36,7 @@ for doc in "${required_docs[@]}"; do
   fi
 done
 
-echo "Baseline checks passed."
+sim_build_dir="$repo_root/build/sim"
+cmake -S "$repo_root/sim" -B "$sim_build_dir" -DCMAKE_BUILD_TYPE=Debug
+cmake --build "$sim_build_dir"
+ctest --test-dir "$sim_build_dir" --output-on-failure

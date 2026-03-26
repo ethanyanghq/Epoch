@@ -19,6 +19,8 @@ game/export/build/
 game/export/macos/*.app
 game/export/macos/*.zip
 game/export/macos/*.dmg
+!game/export_presets.cfg
+!game/bin/.gitkeep
 
 # CMake and native build outputs
 build/
@@ -42,6 +44,10 @@ cmake_install.cmake
 *.lib
 *.pdb
 *.dSYM/
+
+# Local third-party dependency checkouts
+extension/third_party/godot-cpp/
+third_party/godot-cpp/
 
 # Test, profiling, and local run artifacts
 *.log
