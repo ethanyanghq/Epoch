@@ -50,10 +50,21 @@ The native codebase currently includes:
   - farmland
   - forestry
   - quarry
+- sim-owned project queries through `get_projects(ProjectListQuery)`
+- queue-time validation and creation for:
+  - road projects
+  - Warehouse I building projects
+- deterministic monthly construction progression for:
+  - queued road projects
+  - one real Warehouse I building project path
+- authoritative built-road persistence, chunk-visual rendering, and movement-cost impact on
+  current reach/zoning calculations
 - zone save/load persistence with stable zone ids and authoritative ownership
+- project and built-road save/load persistence with stable project ids and live progress/status
 - native tests covering world creation, chunk queries, overlay queries, settlement summary
-  reads, metrics, month advancement, save/load equivalence, zoning mutations, and
-  zoning save/load equivalence
+  reads, metrics, month advancement, save/load equivalence, zoning mutations, zoning
+  save/load equivalence, project queueing, construction progression, blocker reporting, and
+  road access impact
 
 ## Current public API surface
 
@@ -73,10 +84,10 @@ The currently exposed sim/bridge methods are:
 The following end-state interfaces and systems are still planned and should not be treated as
 currently callable unless their code lands:
 - settlement detail queries
-- project queries
 - route debug queries
-- road queueing, construction, logistics, founding, and settlement simulation beyond
-  the current zoning path
+- Estate I as a real building project path
+- founding, logistics, and settlement simulation beyond the current Milestone 1 zoning and
+  construction slice
 - real Godot binding registration through `godot-cpp`
 
 ## Working rule for documentation
