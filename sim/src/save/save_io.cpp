@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "alpha/map/map_types.hpp"
+#include "alpha/projects/project_types.hpp"
 #include "alpha/zones/zone_types.hpp"
 
 namespace alpha::save {
@@ -124,6 +125,36 @@ bool read_u32_vector(std::istream& stream, std::vector<uint32_t>& values) {
   return true;
 }
 
+bool write_u16_vector(std::ostream& stream, const std::vector<uint16_t>& values) {
+  if (!write_integer<uint32_t>(stream, static_cast<uint32_t>(values.size()))) {
+    return false;
+  }
+
+  for (const uint16_t value : values) {
+    if (!write_integer<uint16_t>(stream, value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool read_u16_vector(std::istream& stream, std::vector<uint16_t>& values) {
+  uint32_t count = 0;
+  if (!read_integer(stream, count)) {
+    return false;
+  }
+
+  values.assign(count, 0);
+  for (uint32_t index = 0; index < count; ++index) {
+    if (!read_integer(stream, values[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool write_byte_array(std::ostream& stream, const std::vector<uint8_t>& values) {
   if (!values.empty()) {
     stream.write(reinterpret_cast<const char*>(values.data()),
@@ -172,6 +203,64 @@ const char* zone_type_name(const ZoneType zone_type) noexcept {
   }
 
   return "Unknown";
+}
+
+const char* project_family_name(const ProjectFamily family) noexcept {
+  switch (family) {
+    case ProjectFamily::Road:
+      return "Road";
+    case ProjectFamily::Building:
+      return "Building";
+    case ProjectFamily::Founding:
+      return "Founding";
+    case ProjectFamily::Expansion:
+      return "Expansion";
+  }
+
+  return "Unknown";
+}
+
+const char* priority_label_name(const PriorityLabel priority) noexcept {
+  switch (priority) {
+    case PriorityLabel::Required:
+      return "Required";
+    case PriorityLabel::High:
+      return "High";
+    case PriorityLabel::Normal:
+      return "Normal";
+    case PriorityLabel::Low:
+      return "Low";
+    case PriorityLabel::Paused:
+      return "Paused";
+  }
+
+  return "Unknown";
+}
+
+const char* project_blocker_code_name(const ProjectBlockerCode blocker_code) noexcept {
+  switch (blocker_code) {
+    case ProjectBlockerCode::Unknown:
+      return "Unknown";
+    case ProjectBlockerCode::WaitingForConstructionSystem:
+      return "WaitingForConstructionSystem";
+    case ProjectBlockerCode::PausedByPriority:
+      return "PausedByPriority";
+  }
+
+  return "Unknown";
+}
+
+bool write_project_resource_state(std::ostream& stream,
+                                  const projects::ProjectResourceState& resource_state) {
+  return write_integer<int32_t>(stream, resource_state.food) &&
+         write_integer<int32_t>(stream, resource_state.wood) &&
+         write_integer<int32_t>(stream, resource_state.stone);
+}
+
+bool read_project_resource_state(std::istream& stream,
+                                 projects::ProjectResourceState& resource_state) {
+  return read_integer(stream, resource_state.food) && read_integer(stream, resource_state.wood) &&
+         read_integer(stream, resource_state.stone);
 }
 
 std::string escape_json_string(std::string_view value) {
@@ -395,7 +484,76 @@ std::string build_json_debug_export(const world::WorldState& world_state) {
   json << "  \"road_snapshot\": {\n";
   json << "    \"road_cell_indices\": []\n";
   json << "  },\n";
-  json << "  \"project_snapshots\": []\n";
+  json << "  \"project_snapshots\": [\n";
+
+  std::vector<const projects::ProjectState*> sorted_projects;
+  sorted_projects.reserve(world_state.projects.size());
+  for (const projects::ProjectState& project : world_state.projects) {
+    sorted_projects.push_back(&project);
+  }
+  std::sort(sorted_projects.begin(), sorted_projects.end(),
+            [](const projects::ProjectState* left, const projects::ProjectState* right) {
+              return left->project_id < right->project_id;
+            });
+
+  for (std::size_t project_index = 0; project_index < sorted_projects.size(); ++project_index) {
+    const projects::ProjectState& project = *sorted_projects[project_index];
+    json << "    {\n";
+    json << "      \"id\": " << project.project_id.value << ",\n";
+    json << "      \"owner_settlement_id\": " << project.owner_settlement_id.value << ",\n";
+    json << "      \"family\": \"" << project_family_name(project.family) << "\",\n";
+    json << "      \"type\": " << static_cast<uint32_t>(project.type) << ",\n";
+    json << "      \"type_name\": \"" << escape_json_string(projects::project_type_name(project))
+         << "\",\n";
+    json << "      \"target_x\": " << project.target.x << ",\n";
+    json << "      \"target_y\": " << project.target.y << ",\n";
+    json << "      \"route_cell_indices\": [";
+    for (std::size_t route_index = 0; route_index < project.route_cell_indices.size();
+         ++route_index) {
+      if (route_index != 0U) {
+        json << ", ";
+      }
+      json << project.route_cell_indices[route_index];
+    }
+    json << "],\n";
+    json << "      \"priority\": \"" << priority_label_name(project.priority) << "\",\n";
+    json << "      \"status\": \"" << escape_json_string(projects::project_status_name(project.status))
+         << "\",\n";
+    json << "      \"required_materials\": {\n";
+    json << "        \"food_tenths\": " << project.required_materials.food << ",\n";
+    json << "        \"wood_tenths\": " << project.required_materials.wood << ",\n";
+    json << "        \"stone_tenths\": " << project.required_materials.stone << "\n";
+    json << "      },\n";
+    json << "      \"reserved_materials\": {\n";
+    json << "        \"food_tenths\": " << project.reserved_materials.food << ",\n";
+    json << "        \"wood_tenths\": " << project.reserved_materials.wood << ",\n";
+    json << "        \"stone_tenths\": " << project.reserved_materials.stone << "\n";
+    json << "      },\n";
+    json << "      \"consumed_materials\": {\n";
+    json << "        \"food_tenths\": " << project.consumed_materials.food << ",\n";
+    json << "        \"wood_tenths\": " << project.consumed_materials.wood << ",\n";
+    json << "        \"stone_tenths\": " << project.consumed_materials.stone << "\n";
+    json << "      },\n";
+    json << "      \"remaining_common_work_tenths\": " << project.remaining_common_work << ",\n";
+    json << "      \"remaining_skilled_work_tenths\": " << project.remaining_skilled_work << ",\n";
+    json << "      \"access_modifier_tenths\": " << project.access_modifier_tenths << ",\n";
+    json << "      \"blocker_codes\": [";
+    for (std::size_t blocker_index = 0; blocker_index < project.blocker_codes.size();
+         ++blocker_index) {
+      if (blocker_index != 0U) {
+        json << ", ";
+      }
+      json << "\"" << project_blocker_code_name(project.blocker_codes[blocker_index]) << "\"";
+    }
+    json << "]\n";
+    json << "    }";
+    if (project_index + 1U != sorted_projects.size()) {
+      json << ",";
+    }
+    json << "\n";
+  }
+
+  json << "  ]\n";
   json << "}\n";
   return json.str();
 }
@@ -520,8 +678,49 @@ bool serialize_world(std::ostream& stream, const world::WorldState& world_state)
     }
   }
 
-  return write_integer<uint32_t>(stream, 0U) && write_integer<uint32_t>(stream, 0U) &&
-         write_integer<uint32_t>(stream, 0U);
+  if (!write_integer<uint32_t>(stream, 0U) || !write_integer<uint32_t>(stream, 0U) ||
+      !write_integer<uint32_t>(stream, static_cast<uint32_t>(world_state.projects.size()))) {
+    return false;
+  }
+
+  std::vector<const projects::ProjectState*> sorted_projects;
+  sorted_projects.reserve(world_state.projects.size());
+  for (const projects::ProjectState& project : world_state.projects) {
+    sorted_projects.push_back(&project);
+  }
+  std::sort(sorted_projects.begin(), sorted_projects.end(),
+            [](const projects::ProjectState* left, const projects::ProjectState* right) {
+              return left->project_id < right->project_id;
+            });
+
+  for (const projects::ProjectState* project : sorted_projects) {
+    std::vector<uint16_t> blocker_codes;
+    blocker_codes.reserve(project->blocker_codes.size());
+    for (const ProjectBlockerCode blocker_code : project->blocker_codes) {
+      blocker_codes.push_back(static_cast<uint16_t>(blocker_code));
+    }
+
+    if (!write_integer<uint32_t>(stream, project->project_id.value) ||
+        !write_integer<uint32_t>(stream, project->owner_settlement_id.value) ||
+        !write_integer<uint8_t>(stream, static_cast<uint8_t>(project->family)) ||
+        !write_integer<uint8_t>(stream, project->type) ||
+        !write_integer<int32_t>(stream, project->target.x) ||
+        !write_integer<int32_t>(stream, project->target.y) ||
+        !write_u32_vector(stream, project->route_cell_indices) ||
+        !write_integer<uint8_t>(stream, static_cast<uint8_t>(project->priority)) ||
+        !write_integer<uint8_t>(stream, static_cast<uint8_t>(project->status)) ||
+        !write_project_resource_state(stream, project->required_materials) ||
+        !write_project_resource_state(stream, project->reserved_materials) ||
+        !write_project_resource_state(stream, project->consumed_materials) ||
+        !write_integer<int32_t>(stream, project->remaining_common_work) ||
+        !write_integer<int32_t>(stream, project->remaining_skilled_work) ||
+        !write_integer<int32_t>(stream, project->access_modifier_tenths) ||
+        !write_u16_vector(stream, blocker_codes)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
@@ -721,15 +920,92 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
     result.error_message = "Failed to read trailing snapshot section counts.";
     return false;
   }
-  if (plot_count != 0U || road_cell_count != 0U || project_count != 0U) {
+  if (plot_count != 0U || road_cell_count != 0U) {
     result.error_message =
-        "This Milestone 1 save/load path supports only saves with zero plots, roads, and projects.";
+        "This Milestone 1 save/load path supports only saves with zero plots and built roads.";
     return false;
   }
 
+  world_state.projects.clear();
+  world_state.projects.reserve(project_count);
+  uint32_t max_project_id = 0;
+  for (uint32_t project_index = 0; project_index < project_count; ++project_index) {
+    projects::ProjectState project;
+    uint8_t encoded_family = 0;
+    uint8_t encoded_priority = 0;
+    uint8_t encoded_status = 0;
+    std::vector<uint16_t> blocker_codes;
+    if (!read_integer(stream, project.project_id.value) ||
+        !read_integer(stream, project.owner_settlement_id.value) ||
+        !read_integer(stream, encoded_family) || !read_integer(stream, project.type) ||
+        !read_integer(stream, project.target.x) || !read_integer(stream, project.target.y) ||
+        !read_u32_vector(stream, project.route_cell_indices) ||
+        !read_integer(stream, encoded_priority) || !read_integer(stream, encoded_status) ||
+        !read_project_resource_state(stream, project.required_materials) ||
+        !read_project_resource_state(stream, project.reserved_materials) ||
+        !read_project_resource_state(stream, project.consumed_materials) ||
+        !read_integer(stream, project.remaining_common_work) ||
+        !read_integer(stream, project.remaining_skilled_work) ||
+        !read_integer(stream, project.access_modifier_tenths) ||
+        !read_u16_vector(stream, blocker_codes)) {
+      result.error_message = "Failed to read a project snapshot.";
+      return false;
+    }
+
+    project.family = static_cast<ProjectFamily>(encoded_family);
+    project.priority = static_cast<PriorityLabel>(encoded_priority);
+    project.status = static_cast<ProjectStatus>(encoded_status);
+
+    if (!projects::is_valid_project_family(project.family) ||
+        !projects::is_valid_project_type_code(project.type) ||
+        !projects::is_valid_priority_label(project.priority) ||
+        !projects::is_valid_project_status(project.status)) {
+      result.error_message = "A saved project snapshot contains unsupported enum values.";
+      return false;
+    }
+
+    if (settlements::find_settlement(world_state.settlements, project.owner_settlement_id) == nullptr) {
+      result.error_message = "A saved project references an unknown owner settlement.";
+      return false;
+    }
+
+    if (project.route_cell_indices.empty()) {
+      result.error_message = "A saved road project must contain at least one route cell.";
+      return false;
+    }
+
+    for (const uint32_t route_cell_index : project.route_cell_indices) {
+      if (route_cell_index >= cell_count) {
+        result.error_message = "A saved project references an out-of-bounds route cell index.";
+        return false;
+      }
+    }
+
+    project.blocker_codes.clear();
+    project.blocker_codes.reserve(blocker_codes.size());
+    for (const uint16_t encoded_blocker_code : blocker_codes) {
+      const ProjectBlockerCode blocker_code = static_cast<ProjectBlockerCode>(encoded_blocker_code);
+      if (!projects::is_valid_project_blocker_code(blocker_code)) {
+        result.error_message = "A saved project contains an unsupported blocker code.";
+        return false;
+      }
+      project.blocker_codes.push_back(blocker_code);
+    }
+
+    projects::refresh_project_derived_state(project);
+    max_project_id = std::max(max_project_id, project.project_id.value);
+    world_state.projects.push_back(std::move(project));
+  }
+
+  std::sort(world_state.projects.begin(), world_state.projects.end(),
+            [](const projects::ProjectState& left, const projects::ProjectState& right) {
+              return left.project_id < right.project_id;
+            });
+  world_state.next_project_id = ProjectId{max_project_id + 1U};
+
   zones::rebuild_zone_state(world_state);
   world_state.plot_count = 0;
-  world_state.project_count = 0;
+  world_state.project_count = static_cast<uint32_t>(world_state.projects.size());
   world_state.road_cell_count = 0;
   world_state.dirty_chunks = world::make_all_chunk_coords(world_state.map_width, world_state.map_height);
 

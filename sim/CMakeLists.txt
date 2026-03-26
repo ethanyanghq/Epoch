@@ -14,6 +14,7 @@ add_library(alpha_sim STATIC
   src/map/chunk_visuals.cpp
   src/map/map_grid.cpp
   src/map/overlay_chunks.cpp
+  src/projects/project_types.cpp
   src/save/save_io.cpp
   src/settlements/settlement_types.cpp
   src/world/world_state.cpp
@@ -40,6 +41,10 @@ if(BUILD_TESTING)
     tests/unit/zoning_commands_test.cpp
   )
 
+  add_executable(alpha_sim_project_commands_test
+    tests/unit/project_commands_test.cpp
+  )
+
   target_link_libraries(alpha_sim_smoke_test
     PRIVATE
       alpha_sim
@@ -55,7 +60,13 @@ if(BUILD_TESTING)
       alpha_sim
   )
 
+  target_link_libraries(alpha_sim_project_commands_test
+    PRIVATE
+      alpha_sim
+  )
+
   add_test(NAME alpha_sim_smoke_test COMMAND alpha_sim_smoke_test)
   add_test(NAME alpha_sim_save_load_test COMMAND alpha_sim_save_load_test)
   add_test(NAME alpha_sim_zoning_test COMMAND alpha_sim_zoning_test)
+  add_test(NAME alpha_sim_project_commands_test COMMAND alpha_sim_project_commands_test)
 endif()

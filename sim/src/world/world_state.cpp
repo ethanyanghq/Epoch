@@ -51,7 +51,7 @@ WorldMetrics build_world_metrics(const WorldState& world_state) {
       .settlement_count = static_cast<uint32_t>(world_state.settlements.size()),
       .zone_count = static_cast<uint32_t>(world_state.zones.size()),
       .plot_count = world_state.plot_count,
-      .project_count = world_state.project_count,
+      .project_count = static_cast<uint32_t>(world_state.projects.size()),
       .road_cell_count = world_state.road_cell_count,
       .dirty_chunk_count = static_cast<uint32_t>(world_state.dirty_chunks.size()),
   };

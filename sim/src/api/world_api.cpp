@@ -34,6 +34,10 @@ SettlementSummary WorldApi::get_settlement_summary(const SettlementId settlement
   return simulation_.get_settlement_summary(settlement_id);
 }
 
+ProjectListResult WorldApi::get_projects(const ProjectListQuery& query) const {
+  return simulation_.get_projects(query);
+}
+
 WorldMetrics WorldApi::get_world_metrics() const {
   return simulation_.get_world_metrics();
 }

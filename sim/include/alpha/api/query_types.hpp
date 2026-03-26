@@ -60,4 +60,8 @@ struct OverlayChunkQuery {
   OverlayType overlay_type = OverlayType::Fertility;
 };
 
+struct ProjectListQuery {
+  SettlementId settlement_id;
+};
+
 }  // namespace alpha

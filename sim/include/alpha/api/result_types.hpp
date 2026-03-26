@@ -51,6 +51,19 @@ enum class ProjectFamily : uint8_t {
   Expansion
 };
 
+enum class ProjectStatus : uint8_t {
+  Queued,
+  Blocked,
+  InProgress,
+  Completed
+};
+
+enum class ProjectBlockerCode : uint16_t {
+  Unknown,
+  WaitingForConstructionSystem,
+  PausedByPriority
+};
+
 enum class BuildingType : uint8_t {
   EstateI,
   WarehouseI
@@ -210,6 +223,31 @@ struct SettlementSummary {
   uint32_t active_zone_count = 0;
   uint32_t active_project_count = 0;
   bool food_shortage_flag = false;
+};
+
+struct ProjectView {
+  ProjectId project_id;
+  SettlementId owner_settlement_id;
+  ProjectFamily family = ProjectFamily::Road;
+  std::string type_name;
+  PriorityLabel priority = PriorityLabel::Normal;
+  ProjectStatus status = ProjectStatus::Queued;
+  std::string status_name;
+  ResourceAmountTenths required_food = 0;
+  ResourceAmountTenths required_wood = 0;
+  ResourceAmountTenths required_stone = 0;
+  ResourceAmountTenths reserved_food = 0;
+  ResourceAmountTenths reserved_wood = 0;
+  ResourceAmountTenths reserved_stone = 0;
+  WorkAmountTenths remaining_common_work = 0;
+  WorkAmountTenths remaining_skilled_work = 0;
+  int32_t access_modifier_tenths = 0;
+  std::vector<ProjectBlockerCode> blocker_codes;
+  std::vector<std::string> blockers;
+};
+
+struct ProjectListResult {
+  std::vector<ProjectView> projects;
 };
 
 struct WorldMetrics {

@@ -6,6 +6,7 @@
 
 #include "alpha/api/result_types.hpp"
 #include "alpha/map/map_grid.hpp"
+#include "alpha/projects/project_types.hpp"
 #include "alpha/settlements/settlement_types.hpp"
 #include "alpha/zones/zone_types.hpp"
 
@@ -33,7 +34,9 @@ struct WorldState {
   std::vector<settlements::SettlementState> settlements;
   std::vector<zones::ZoneState> zones;
   std::vector<zones::CellZoneState> zone_cells;
+  std::vector<projects::ProjectState> projects;
   ZoneId next_zone_id{1};
+  ProjectId next_project_id{1};
   uint32_t zone_count = 0;
   uint32_t plot_count = 0;
   uint32_t project_count = 0;
