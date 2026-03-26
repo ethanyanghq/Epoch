@@ -202,6 +202,10 @@ bool is_supported_zone_type(const uint8_t encoded_type) noexcept {
   return encoded_type <= static_cast<uint8_t>(ZoneType::Quarry);
 }
 
+bool is_supported_farm_plot_state(const uint8_t encoded_state) noexcept {
+  return encoded_state <= static_cast<uint8_t>(settlements::FarmPlotStateCode::Fallow);
+}
+
 const char* building_type_name(const BuildingType building_type) noexcept {
   switch (building_type) {
     case BuildingType::EstateI:
@@ -425,6 +429,8 @@ std::string build_json_debug_export(const world::WorldState& world_state) {
     json << "],\n";
     json << "      \"population_whole\": " << settlement.population_whole << ",\n";
     json << "      \"population_fraction_tenths\": " << settlement.population_fraction_tenths << ",\n";
+    json << "      \"population_change_basis_points\": "
+         << settlement.population_change_basis_points << ",\n";
     json << "      \"development_pressure_tenths\": "
          << settlement.development_pressure_tenths << ",\n";
     json << "      \"stockpile\": {\n";
@@ -455,12 +461,19 @@ std::string build_json_debug_export(const world::WorldState& world_state) {
     json << "        \"reassignment_budget_tenths\": "
          << settlement.labor_state.reassignment_budget_tenths << ",\n";
     json << "        \"protected_food_floor_serfs\": "
-         << settlement.labor_state.protected_food_floor_serfs << "\n";
+         << settlement.labor_state.protected_food_floor_serfs << ",\n";
+    json << "        \"protected_base_demand\": "
+         << settlement.labor_state.protected_base_demand << ",\n";
+    json << "        \"extra_role_demand\": "
+         << settlement.labor_state.extra_role_demand << ",\n";
+    json << "        \"idle_fill\": " << settlement.labor_state.idle_fill << "\n";
     json << "      },\n";
     json << "      \"founding_source_settlement_id\": "
          << settlement.founding_source_settlement_id.value << ",\n";
     json << "      \"has_founding_source\": "
-         << (settlement.has_founding_source ? "true" : "false") << "\n";
+         << (settlement.has_founding_source ? "true" : "false") << ",\n";
+    json << "      \"food_shortage_flag\": "
+         << (settlement.food_shortage_flag ? "true" : "false") << "\n";
     json << "    }";
     if (settlement_index + 1U != sorted_settlements.size()) {
       json << ",";
@@ -503,7 +516,48 @@ std::string build_json_debug_export(const world::WorldState& world_state) {
   }
 
   json << "  ],\n";
-  json << "  \"farm_plot_snapshots\": [],\n";
+  json << "  \"farm_plot_snapshots\": [\n";
+
+  std::vector<const settlements::FarmPlotState*> sorted_plots;
+  sorted_plots.reserve(world_state.farm_plots.size());
+  for (const settlements::FarmPlotState& plot : world_state.farm_plots) {
+    sorted_plots.push_back(&plot);
+  }
+  std::sort(sorted_plots.begin(), sorted_plots.end(),
+            [](const settlements::FarmPlotState* left, const settlements::FarmPlotState* right) {
+              return left->plot_id < right->plot_id;
+            });
+
+  for (std::size_t plot_index = 0; plot_index < sorted_plots.size(); ++plot_index) {
+    const settlements::FarmPlotState& plot = *sorted_plots[plot_index];
+    json << "    {\n";
+    json << "      \"id\": " << plot.plot_id.value << ",\n";
+    json << "      \"parent_zone_id\": " << plot.parent_zone_id.value << ",\n";
+    json << "      \"cell_indices\": [";
+    for (std::size_t index = 0; index < plot.cell_indices.size(); ++index) {
+      if (index != 0) {
+        json << ", ";
+      }
+      json << plot.cell_indices[index];
+    }
+    json << "],\n";
+    json << "      \"state\": \"" << settlements::farm_plot_state_name(plot.state) << "\",\n";
+    json << "      \"avg_fertility_tenths\": " << plot.avg_fertility_tenths << ",\n";
+    json << "      \"avg_access_cost_tenths\": " << plot.avg_access_cost_tenths << ",\n";
+    json << "      \"forested_flag\": " << (plot.forested_flag ? "true" : "false") << ",\n";
+    json << "      \"labor_coverage_tenths\": " << plot.labor_coverage_tenths << ",\n";
+    json << "      \"current_year_required_labor\": " << plot.current_year_required_labor << ",\n";
+    json << "      \"current_year_assigned_labor\": " << plot.current_year_assigned_labor << ",\n";
+    json << "      \"opening_months_remaining\": " << plot.opening_months_remaining << ",\n";
+    json << "      \"opening_work_remaining_tenths\": " << plot.opening_work_remaining_tenths << "\n";
+    json << "    }";
+    if (plot_index + 1U != sorted_plots.size()) {
+      json << ",";
+    }
+    json << "\n";
+  }
+
+  json << "  ],\n";
   json << "  \"road_snapshot\": {\n";
   json << "    \"road_cell_indices\": [";
   bool first_road_cell = true;
@@ -662,6 +716,7 @@ bool serialize_world(std::ostream& stream, const world::WorldState& world_state)
         !write_u32_vector(stream, footprint) ||
         !write_integer<int32_t>(stream, settlement->population_whole) ||
         !write_integer<int32_t>(stream, settlement->population_fraction_tenths) ||
+        !write_integer<int32_t>(stream, settlement->population_change_basis_points) ||
         !write_integer<int32_t>(stream, settlement->development_pressure_tenths) ||
         !write_integer<int32_t>(stream, settlement->stockpile.food) ||
         !write_integer<int32_t>(stream, settlement->stockpile.wood) ||
@@ -681,8 +736,12 @@ bool serialize_world(std::ostream& stream, const world::WorldState& world_state)
         !write_integer<int32_t>(stream, settlement->labor_state.last_noble_fill) ||
         !write_integer<int32_t>(stream, settlement->labor_state.reassignment_budget_tenths) ||
         !write_integer<int32_t>(stream, settlement->labor_state.protected_food_floor_serfs) ||
+        !write_integer<int32_t>(stream, settlement->labor_state.protected_base_demand) ||
+        !write_integer<int32_t>(stream, settlement->labor_state.extra_role_demand) ||
+        !write_integer<int32_t>(stream, settlement->labor_state.idle_fill) ||
         !write_integer<uint32_t>(stream, settlement->founding_source_settlement_id.value) ||
-        !write_bool(stream, settlement->has_founding_source)) {
+        !write_bool(stream, settlement->has_founding_source) ||
+        !write_bool(stream, settlement->food_shortage_flag)) {
       return false;
     }
   }
@@ -721,7 +780,40 @@ bool serialize_world(std::ostream& stream, const world::WorldState& world_state)
     }
   }
 
-  if (!write_integer<uint32_t>(stream, 0U) ||
+  std::vector<const settlements::FarmPlotState*> sorted_plots_for_binary;
+  sorted_plots_for_binary.reserve(world_state.farm_plots.size());
+  for (const settlements::FarmPlotState& plot : world_state.farm_plots) {
+    sorted_plots_for_binary.push_back(&plot);
+  }
+  std::sort(sorted_plots_for_binary.begin(), sorted_plots_for_binary.end(),
+            [](const settlements::FarmPlotState* left, const settlements::FarmPlotState* right) {
+              return left->plot_id < right->plot_id;
+            });
+
+  if (!write_integer<uint32_t>(stream, static_cast<uint32_t>(sorted_plots_for_binary.size()))) {
+    return false;
+  }
+
+  for (const settlements::FarmPlotState* plot : sorted_plots_for_binary) {
+    std::vector<uint32_t> sorted_cells = plot->cell_indices;
+    std::sort(sorted_cells.begin(), sorted_cells.end());
+    if (!write_integer<uint32_t>(stream, plot->plot_id.value) ||
+        !write_integer<uint32_t>(stream, plot->parent_zone_id.value) ||
+        !write_u32_vector(stream, sorted_cells) ||
+        !write_integer<uint8_t>(stream, static_cast<uint8_t>(plot->state)) ||
+        !write_integer<uint16_t>(stream, plot->avg_fertility_tenths) ||
+        !write_integer<uint16_t>(stream, plot->avg_access_cost_tenths) ||
+        !write_bool(stream, plot->forested_flag) ||
+        !write_integer<uint16_t>(stream, plot->labor_coverage_tenths) ||
+        !write_integer<int32_t>(stream, plot->current_year_required_labor) ||
+        !write_integer<int32_t>(stream, plot->current_year_assigned_labor) ||
+        !write_integer<int32_t>(stream, plot->opening_months_remaining) ||
+        !write_integer<int32_t>(stream, plot->opening_work_remaining_tenths)) {
+      return false;
+    }
+  }
+
+  if (
       !write_integer<uint32_t>(stream, static_cast<uint32_t>(road_cell_indices.size())) ||
       !write_u32_values(stream, road_cell_indices) ||
       !write_integer<uint32_t>(stream, static_cast<uint32_t>(world_state.projects.size()))) {
@@ -873,6 +965,7 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
         !read_u32_vector(stream, settlement.footprint_cell_indices) ||
         !read_integer(stream, settlement.population_whole) ||
         !read_integer(stream, settlement.population_fraction_tenths) ||
+        !read_integer(stream, settlement.population_change_basis_points) ||
         !read_integer(stream, settlement.development_pressure_tenths) ||
         !read_integer(stream, settlement.stockpile.food) ||
         !read_integer(stream, settlement.stockpile.wood) ||
@@ -897,13 +990,15 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
         !read_integer(stream, settlement.labor_state.last_noble_fill) ||
         !read_integer(stream, settlement.labor_state.reassignment_budget_tenths) ||
         !read_integer(stream, settlement.labor_state.protected_food_floor_serfs) ||
+        !read_integer(stream, settlement.labor_state.protected_base_demand) ||
+        !read_integer(stream, settlement.labor_state.extra_role_demand) ||
+        !read_integer(stream, settlement.labor_state.idle_fill) ||
         !read_integer(stream, settlement.founding_source_settlement_id.value) ||
-        !read_bool(stream, settlement.has_founding_source)) {
+        !read_bool(stream, settlement.has_founding_source) ||
+        !read_bool(stream, settlement.food_shortage_flag)) {
       result.error_message = "Failed to read a settlement labor or founding snapshot.";
       return false;
     }
-
-    settlement.food_shortage_flag = false;
     world_state.settlements.push_back(std::move(settlement));
   }
 
@@ -961,14 +1056,45 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
   uint32_t road_cell_count = 0;
   uint32_t project_count = 0;
   std::vector<uint32_t> road_cell_indices;
-  if (!read_integer(stream, plot_count) || !read_integer(stream, road_cell_count) ||
+  if (!read_integer(stream, plot_count)) {
+    result.error_message = "Failed to read the farm plot snapshot count.";
+    return false;
+  }
+
+  world_state.farm_plots.clear();
+  world_state.farm_plots.reserve(plot_count);
+  uint32_t max_plot_id = 0;
+  for (uint32_t plot_index = 0; plot_index < plot_count; ++plot_index) {
+    settlements::FarmPlotState plot;
+    uint8_t encoded_state = 0;
+    if (!read_integer(stream, plot.plot_id.value) ||
+        !read_integer(stream, plot.parent_zone_id.value) ||
+        !read_u32_vector(stream, plot.cell_indices) ||
+        !read_integer(stream, encoded_state) ||
+        !is_supported_farm_plot_state(encoded_state) ||
+        !read_integer(stream, plot.avg_fertility_tenths) ||
+        !read_integer(stream, plot.avg_access_cost_tenths) ||
+        !read_bool(stream, plot.forested_flag) ||
+        !read_integer(stream, plot.labor_coverage_tenths) ||
+        !read_integer(stream, plot.current_year_required_labor) ||
+        !read_integer(stream, plot.current_year_assigned_labor) ||
+        !read_integer(stream, plot.opening_months_remaining) ||
+        !read_integer(stream, plot.opening_work_remaining_tenths)) {
+      result.error_message = "Failed to read a farm plot snapshot.";
+      return false;
+    }
+
+    plot.state = static_cast<settlements::FarmPlotStateCode>(encoded_state);
+    max_plot_id = std::max(max_plot_id, plot.plot_id.value);
+    world_state.farm_plots.push_back(std::move(plot));
+  }
+
+  world_state.next_farm_plot_id = FarmPlotId{max_plot_id + 1U};
+
+  if (!read_integer(stream, road_cell_count) ||
       !read_n_u32_values(stream, road_cell_count, road_cell_indices) ||
       !read_integer(stream, project_count)) {
     result.error_message = "Failed to read trailing snapshot section counts.";
-    return false;
-  }
-  if (plot_count != 0U) {
-    result.error_message = "This Milestone 1 save/load path supports only saves with zero plots.";
     return false;
   }
 
@@ -1075,7 +1201,11 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
   world_state.next_project_id = ProjectId{max_project_id + 1U};
 
   zones::rebuild_zone_state(world_state);
-  world_state.plot_count = 0;
+  std::sort(world_state.farm_plots.begin(), world_state.farm_plots.end(),
+            [](const settlements::FarmPlotState& left, const settlements::FarmPlotState& right) {
+              return left.plot_id < right.plot_id;
+            });
+  world_state.plot_count = static_cast<uint32_t>(world_state.farm_plots.size());
   world_state.project_count = static_cast<uint32_t>(world_state.projects.size());
   world_state.road_cell_count = road_cell_count;
   world_state.dirty_chunks = world::make_all_chunk_coords(world_state.map_width, world_state.map_height);

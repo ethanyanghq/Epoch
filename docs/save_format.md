@@ -113,6 +113,9 @@ struct LaborStateSnapshot {
   int32_t last_noble_fill;
   int32_t reassignment_budget_tenths;
   int32_t protected_food_floor_serfs;
+  int32_t protected_base_demand;
+  int32_t extra_role_demand;
+  int32_t idle_fill;
 };
 
 struct StockpileSnapshot {
@@ -128,18 +131,21 @@ struct SettlementSnapshot {
   std::vector<uint32_t> footprint_cell_indices;
   int32_t population_whole;
   int32_t population_fraction_tenths;
+  int32_t population_change_basis_points;
   int32_t development_pressure_tenths;
   StockpileSnapshot stockpile;
   std::array<BuildingSnapshot, 2> buildings;
   LaborStateSnapshot labor_state;
   uint32_t founding_source_settlement_id;
   bool has_founding_source;
+  bool food_shortage_flag;
 };
 ```
 
 Rules:
 - Footprint cells are serialized as flattened row-major cell indices.
 - Building slots are fixed to Estate I and Warehouse I.
+- `population_change_basis_points` is the authoritative hidden population accumulator used to preserve small monthly growth and starvation increments deterministically.
 - Founding source is present only while the settlement is still being founded.
 
 ## Zone snapshot
@@ -168,7 +174,11 @@ struct FarmPlotSnapshot {
   uint16_t avg_fertility_tenths;
   uint16_t avg_access_cost_tenths;
   bool forested_flag;
-  uint16_t current_year_labor_coverage_tenths;
+  uint16_t labor_coverage_tenths;
+  int32_t current_year_required_labor;
+  int32_t current_year_assigned_labor;
+  int32_t opening_months_remaining;
+  int32_t opening_work_remaining_tenths;
 };
 ```
 

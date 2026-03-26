@@ -67,26 +67,35 @@ void assert_turn_reports_equal(const alpha::TurnReport& left, const alpha::TurnR
   assert(left.year == right.year);
   assert(left.month == right.month);
   assert(left.phase_timings.size() == right.phase_timings.size());
-  assert(left.stockpile_deltas.empty());
-  assert(right.stockpile_deltas.empty());
-  assert(left.population_deltas.empty());
-  assert(right.population_deltas.empty());
-  assert(left.completed_projects.empty());
-  assert(right.completed_projects.empty());
-  assert(left.newly_blocked_projects.empty());
-  assert(right.newly_blocked_projects.empty());
-  assert(left.newly_unblocked_projects.empty());
-  assert(right.newly_unblocked_projects.empty());
-  assert(left.shortage_settlements.empty());
-  assert(right.shortage_settlements.empty());
-  assert(left.dirty_chunks.empty());
-  assert(right.dirty_chunks.empty());
-  assert(left.dirty_overlays.empty());
-  assert(right.dirty_overlays.empty());
+  assert(left.stockpile_deltas.size() == right.stockpile_deltas.size());
+  assert(left.population_deltas.size() == right.population_deltas.size());
+  assert(left.completed_projects == right.completed_projects);
+  assert(left.newly_blocked_projects == right.newly_blocked_projects);
+  assert(left.newly_unblocked_projects == right.newly_unblocked_projects);
+  assert(left.shortage_settlements == right.shortage_settlements);
+  assert(left.dirty_chunks == right.dirty_chunks);
+  assert(left.dirty_overlays == right.dirty_overlays);
 
   for (std::size_t index = 0; index < left.phase_timings.size(); ++index) {
     assert(left.phase_timings[index].phase_name == right.phase_timings[index].phase_name);
     assert(left.phase_timings[index].duration_ms == right.phase_timings[index].duration_ms);
+  }
+
+  for (std::size_t index = 0; index < left.stockpile_deltas.size(); ++index) {
+    assert(left.stockpile_deltas[index].settlement_id == right.stockpile_deltas[index].settlement_id);
+    assert(left.stockpile_deltas[index].food_delta == right.stockpile_deltas[index].food_delta);
+    assert(left.stockpile_deltas[index].wood_delta == right.stockpile_deltas[index].wood_delta);
+    assert(left.stockpile_deltas[index].stone_delta == right.stockpile_deltas[index].stone_delta);
+  }
+
+  for (std::size_t index = 0; index < left.population_deltas.size(); ++index) {
+    assert(left.population_deltas[index].settlement_id ==
+           right.population_deltas[index].settlement_id);
+    assert(left.population_deltas[index].whole_delta == right.population_deltas[index].whole_delta);
+    assert(left.population_deltas[index].fractional_delta_tenths ==
+           right.population_deltas[index].fractional_delta_tenths);
+    assert(left.population_deltas[index].starvation_occurred ==
+           right.population_deltas[index].starvation_occurred);
   }
 }
 
