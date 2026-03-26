@@ -16,6 +16,7 @@ class AlphaWorldBridge final {
   alpha::CreateWorldResult create_world(const alpha::WorldCreateParams& params);
   alpha::TurnReport advance_month();
   alpha::ChunkVisualResult get_chunk_visual(const alpha::ChunkVisualQuery& query) const;
+  alpha::OverlayChunkResult get_overlay_chunk(const alpha::OverlayChunkQuery& query) const;
   alpha::WorldMetrics get_world_metrics() const;
 
  private:

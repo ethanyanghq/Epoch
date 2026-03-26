@@ -14,6 +14,11 @@ alpha::ChunkVisualResult AlphaWorldBridge::get_chunk_visual(const alpha::ChunkVi
   return world_api_.get_chunk_visual(query);
 }
 
+alpha::OverlayChunkResult AlphaWorldBridge::get_overlay_chunk(
+    const alpha::OverlayChunkQuery& query) const {
+  return world_api_.get_overlay_chunk(query);
+}
+
 alpha::WorldMetrics AlphaWorldBridge::get_world_metrics() const {
   return world_api_.get_world_metrics();
 }

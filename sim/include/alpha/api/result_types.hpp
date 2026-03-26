@@ -123,6 +123,20 @@ struct ChunkVisualResult {
   std::array<ChunkVisualCell, kChunkCellCount> cells;
 };
 
+struct OverlayLegendEntry {
+  uint8_t value_index = 0;
+  std::string label;
+};
+
+struct OverlayChunkResult {
+  ChunkCoord chunk;
+  OverlayType overlay_type = OverlayType::Fertility;
+  uint16_t width = 0;
+  uint16_t height = 0;
+  std::array<uint8_t, kChunkCellCount> values{};
+  std::vector<OverlayLegendEntry> legend;
+};
+
 struct WorldMetrics {
   uint32_t settlement_count = 0;
   uint32_t zone_count = 0;

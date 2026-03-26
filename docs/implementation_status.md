@@ -39,8 +39,9 @@ The native codebase currently includes:
   - fertility
   - vegetation
 - `get_chunk_visual()` for fixed `64 x 64` chunk queries
+- `get_overlay_chunk()` for a sim-owned fertility overlay path
 - `get_world_metrics()` for current live world counters
-- a native smoke test covering world creation, chunk queries, metrics, and month advancement
+- a native smoke test covering world creation, chunk queries, overlay queries, metrics, and month advancement
 
 ## Current public API surface
 
@@ -48,6 +49,7 @@ The currently exposed sim/bridge methods are:
 - `create_world(WorldCreateParams)`
 - `advance_month()`
 - `get_chunk_visual(ChunkVisualQuery)`
+- `get_overlay_chunk(OverlayChunkQuery)`
 - `get_world_metrics()`
 
 ## Not implemented yet
@@ -57,7 +59,6 @@ currently callable unless their code lands:
 - `load_world()`
 - `save_world()`
 - `apply_commands()`
-- `get_overlay_chunk()`
 - settlement summary/detail queries
 - project queries
 - route debug queries

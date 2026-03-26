@@ -20,6 +20,25 @@ void assert_chunk_results_equal(const alpha::ChunkVisualResult& left,
   }
 }
 
+void assert_overlay_results_equal(const alpha::OverlayChunkResult& left,
+                                  const alpha::OverlayChunkResult& right) {
+  assert(left.chunk.x == right.chunk.x);
+  assert(left.chunk.y == right.chunk.y);
+  assert(left.overlay_type == right.overlay_type);
+  assert(left.width == right.width);
+  assert(left.height == right.height);
+  assert(left.legend.size() == right.legend.size());
+
+  for (std::size_t index = 0; index < left.values.size(); ++index) {
+    assert(left.values[index] == right.values[index]);
+  }
+
+  for (std::size_t index = 0; index < left.legend.size(); ++index) {
+    assert(left.legend[index].value_index == right.legend[index].value_index);
+    assert(left.legend[index].label == right.legend[index].label);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -69,6 +88,39 @@ int main() {
   });
   assert_chunk_results_equal(first_chunk, repeated_chunk);
 
+  const alpha::OverlayChunkResult fertility_overlay = world_api.get_overlay_chunk({
+      .chunk = {.x = 0, .y = 0},
+      .overlay_type = alpha::OverlayType::Fertility,
+  });
+  assert(fertility_overlay.chunk.x == 0);
+  assert(fertility_overlay.chunk.y == 0);
+  assert(fertility_overlay.overlay_type == alpha::OverlayType::Fertility);
+  assert(fertility_overlay.width == alpha::kChunkSize);
+  assert(fertility_overlay.height == alpha::kChunkSize);
+  assert(fertility_overlay.legend.size() == 5U);
+  assert(fertility_overlay.legend[0].value_index == 0U);
+  assert(fertility_overlay.legend[0].label == "Barren (0-20)");
+  assert(fertility_overlay.legend[1].value_index == 1U);
+  assert(fertility_overlay.legend[1].label == "Poor (21-40)");
+  assert(fertility_overlay.legend[2].value_index == 2U);
+  assert(fertility_overlay.legend[2].label == "Fair (41-60)");
+  assert(fertility_overlay.legend[3].value_index == 3U);
+  assert(fertility_overlay.legend[3].label == "Good (61-80)");
+  assert(fertility_overlay.legend[4].value_index == 4U);
+  assert(fertility_overlay.legend[4].label == "Rich (81-100)");
+  bool saw_non_zero_overlay_value = false;
+  for (const uint8_t value : fertility_overlay.values) {
+    assert(value <= 4U);
+    saw_non_zero_overlay_value = saw_non_zero_overlay_value || value != 0U;
+  }
+  assert(saw_non_zero_overlay_value);
+
+  const alpha::OverlayChunkResult repeated_overlay = world_api.get_overlay_chunk({
+      .chunk = {.x = 0, .y = 0},
+      .overlay_type = alpha::OverlayType::Fertility,
+  });
+  assert_overlay_results_equal(fertility_overlay, repeated_overlay);
+
   alpha::WorldApi second_world_api;
   const alpha::CreateWorldResult second_create_result = second_world_api.create_world({
       .terrain_seed = 11,
@@ -85,6 +137,12 @@ int main() {
   });
   assert_chunk_results_equal(first_chunk, second_world_chunk);
 
+  const alpha::OverlayChunkResult second_world_overlay = second_world_api.get_overlay_chunk({
+      .chunk = {.x = 0, .y = 0},
+      .overlay_type = alpha::OverlayType::Fertility,
+  });
+  assert_overlay_results_equal(fertility_overlay, second_world_overlay);
+
   const alpha::ChunkVisualResult invalid_chunk = world_api.get_chunk_visual({
       .chunk = {.x = 16, .y = 0},
       .layer_index = 0,
@@ -98,6 +156,34 @@ int main() {
     assert(cell.road_flag == 0U);
     assert(cell.settlement_flag == 0U);
     assert(cell.reserved == 0U);
+  }
+
+  const alpha::OverlayChunkResult invalid_overlay_chunk = world_api.get_overlay_chunk({
+      .chunk = {.x = 16, .y = 0},
+      .overlay_type = alpha::OverlayType::Fertility,
+  });
+  assert(invalid_overlay_chunk.chunk.x == 16);
+  assert(invalid_overlay_chunk.chunk.y == 0);
+  assert(invalid_overlay_chunk.overlay_type == alpha::OverlayType::Fertility);
+  assert(invalid_overlay_chunk.width == 0U);
+  assert(invalid_overlay_chunk.height == 0U);
+  assert(invalid_overlay_chunk.legend.empty());
+  for (const uint8_t value : invalid_overlay_chunk.values) {
+    assert(value == 0U);
+  }
+
+  const alpha::OverlayChunkResult unsupported_overlay = world_api.get_overlay_chunk({
+      .chunk = {.x = 0, .y = 0},
+      .overlay_type = alpha::OverlayType::Slope,
+  });
+  assert(unsupported_overlay.chunk.x == 0);
+  assert(unsupported_overlay.chunk.y == 0);
+  assert(unsupported_overlay.overlay_type == alpha::OverlayType::Slope);
+  assert(unsupported_overlay.width == 0U);
+  assert(unsupported_overlay.height == 0U);
+  assert(unsupported_overlay.legend.empty());
+  for (const uint8_t value : unsupported_overlay.values) {
+    assert(value == 0U);
   }
 
   alpha::WorldMetrics metrics = world_api.get_world_metrics();

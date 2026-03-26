@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "alpha/map/chunk_visuals.hpp"
+#include "alpha/map/overlay_chunks.hpp"
 
 namespace alpha::core {
 namespace {
@@ -84,6 +85,17 @@ ChunkVisualResult Simulation::get_chunk_visual(const ChunkVisualQuery& query) co
   }
 
   return map::build_chunk_visual_result(world_state_->map_grid, query);
+}
+
+OverlayChunkResult Simulation::get_overlay_chunk(const OverlayChunkQuery& query) const {
+  if (!world_state_.has_value()) {
+    return {
+        .chunk = query.chunk,
+        .overlay_type = query.overlay_type,
+    };
+  }
+
+  return map::build_overlay_chunk_result(world_state_->map_grid, query);
 }
 
 WorldMetrics Simulation::get_world_metrics() const {

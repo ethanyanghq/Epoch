@@ -13,6 +13,7 @@ class Simulation final {
   CreateWorldResult create_world(const WorldCreateParams& params);
   TurnReport advance_month();
   ChunkVisualResult get_chunk_visual(const ChunkVisualQuery& query) const;
+  OverlayChunkResult get_overlay_chunk(const OverlayChunkQuery& query) const;
   WorldMetrics get_world_metrics() const;
 
   bool has_world() const noexcept;
