@@ -49,7 +49,7 @@ void advance_calendar(CalendarState& calendar) noexcept {
 WorldMetrics build_world_metrics(const WorldState& world_state) {
   return {
       .settlement_count = static_cast<uint32_t>(world_state.settlements.size()),
-      .zone_count = world_state.zone_count,
+      .zone_count = static_cast<uint32_t>(world_state.zones.size()),
       .plot_count = world_state.plot_count,
       .project_count = world_state.project_count,
       .road_cell_count = world_state.road_cell_count,

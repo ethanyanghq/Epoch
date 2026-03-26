@@ -14,6 +14,10 @@ SaveWorldResult WorldApi::save_world(const SaveWorldParams& params) const {
   return simulation_.save_world(params);
 }
 
+BatchResult WorldApi::apply_commands(const CommandBatch& batch) {
+  return simulation_.apply_commands(batch);
+}
+
 TurnReport WorldApi::advance_month() {
   return simulation_.advance_month();
 }

@@ -16,6 +16,7 @@ class AlphaWorldBridge final {
   alpha::CreateWorldResult create_world(const alpha::WorldCreateParams& params);
   alpha::LoadWorldResult load_world(const alpha::LoadWorldParams& params);
   alpha::SaveWorldResult save_world(const alpha::SaveWorldParams& params) const;
+  alpha::BatchResult apply_commands(const alpha::CommandBatch& batch);
   alpha::TurnReport advance_month();
   alpha::ChunkVisualResult get_chunk_visual(const alpha::ChunkVisualQuery& query) const;
   alpha::OverlayChunkResult get_overlay_chunk(const alpha::OverlayChunkQuery& query) const;

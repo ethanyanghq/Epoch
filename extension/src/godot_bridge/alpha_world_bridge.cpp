@@ -14,6 +14,10 @@ alpha::SaveWorldResult AlphaWorldBridge::save_world(const alpha::SaveWorldParams
   return world_api_.save_world(params);
 }
 
+alpha::BatchResult AlphaWorldBridge::apply_commands(const alpha::CommandBatch& batch) {
+  return world_api_.apply_commands(batch);
+}
+
 alpha::TurnReport AlphaWorldBridge::advance_month() {
   return world_api_.advance_month();
 }

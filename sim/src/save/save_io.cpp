@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "alpha/map/map_types.hpp"
+#include "alpha/zones/zone_types.hpp"
 
 namespace alpha::save {
 namespace {
@@ -145,12 +146,29 @@ bool is_supported_building_type(const uint8_t encoded_type) noexcept {
   return encoded_type <= static_cast<uint8_t>(BuildingType::WarehouseI);
 }
 
+bool is_supported_zone_type(const uint8_t encoded_type) noexcept {
+  return encoded_type <= static_cast<uint8_t>(ZoneType::Quarry);
+}
+
 const char* building_type_name(const BuildingType building_type) noexcept {
   switch (building_type) {
     case BuildingType::EstateI:
       return "EstateI";
     case BuildingType::WarehouseI:
       return "WarehouseI";
+  }
+
+  return "Unknown";
+}
+
+const char* zone_type_name(const ZoneType zone_type) noexcept {
+  switch (zone_type) {
+    case ZoneType::Farmland:
+      return "Farmland";
+    case ZoneType::Forestry:
+      return "Forestry";
+    case ZoneType::Quarry:
+      return "Quarry";
   }
 
   return "Unknown";
@@ -339,7 +357,40 @@ std::string build_json_debug_export(const world::WorldState& world_state) {
   }
 
   json << "  ],\n";
-  json << "  \"zone_snapshots\": [],\n";
+  json << "  \"zone_snapshots\": [\n";
+
+  std::vector<const zones::ZoneState*> sorted_zones;
+  sorted_zones.reserve(world_state.zones.size());
+  for (const zones::ZoneState& zone : world_state.zones) {
+    sorted_zones.push_back(&zone);
+  }
+  std::sort(sorted_zones.begin(), sorted_zones.end(),
+            [](const zones::ZoneState* left, const zones::ZoneState* right) {
+              return left->zone_id < right->zone_id;
+            });
+
+  for (std::size_t zone_index = 0; zone_index < sorted_zones.size(); ++zone_index) {
+    const zones::ZoneState& zone = *sorted_zones[zone_index];
+    json << "    {\n";
+    json << "      \"id\": " << zone.zone_id.value << ",\n";
+    json << "      \"owner_settlement_id\": " << zone.owner_settlement_id.value << ",\n";
+    json << "      \"zone_type\": \"" << zone_type_name(zone.zone_type) << "\",\n";
+    json << "      \"member_cell_indices\": [";
+    for (std::size_t index = 0; index < zone.member_cell_indices.size(); ++index) {
+      if (index != 0) {
+        json << ", ";
+      }
+      json << zone.member_cell_indices[index];
+    }
+    json << "]\n";
+    json << "    }";
+    if (zone_index + 1U != sorted_zones.size()) {
+      json << ",";
+    }
+    json << "\n";
+  }
+
+  json << "  ],\n";
   json << "  \"farm_plot_snapshots\": [],\n";
   json << "  \"road_snapshot\": {\n";
   json << "    \"road_cell_indices\": []\n";
@@ -443,8 +494,34 @@ bool serialize_world(std::ostream& stream, const world::WorldState& world_state)
     }
   }
 
+  std::vector<const zones::ZoneState*> sorted_zones;
+  sorted_zones.reserve(world_state.zones.size());
+  for (const zones::ZoneState& zone : world_state.zones) {
+    sorted_zones.push_back(&zone);
+  }
+  std::sort(sorted_zones.begin(), sorted_zones.end(),
+            [](const zones::ZoneState* left, const zones::ZoneState* right) {
+              return left->zone_id < right->zone_id;
+            });
+
+  if (!write_integer<uint32_t>(stream, static_cast<uint32_t>(sorted_zones.size()))) {
+    return false;
+  }
+
+  for (const zones::ZoneState* zone : sorted_zones) {
+    std::vector<uint32_t> member_cells = zone->member_cell_indices;
+    std::sort(member_cells.begin(), member_cells.end());
+
+    if (!write_integer<uint32_t>(stream, zone->zone_id.value) ||
+        !write_integer<uint32_t>(stream, zone->owner_settlement_id.value) ||
+        !write_integer<uint8_t>(stream, static_cast<uint8_t>(zone->zone_type)) ||
+        !write_u32_vector(stream, member_cells)) {
+      return false;
+    }
+  }
+
   return write_integer<uint32_t>(stream, 0U) && write_integer<uint32_t>(stream, 0U) &&
-         write_integer<uint32_t>(stream, 0U) && write_integer<uint32_t>(stream, 0U);
+         write_integer<uint32_t>(stream, 0U);
 }
 
 bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
@@ -587,21 +664,70 @@ bool deserialize_world(std::istream& stream, LoadWorldStateResult& result) {
   }
 
   uint32_t zone_count = 0;
-  uint32_t plot_count = 0;
-  uint32_t road_cell_count = 0;
-  uint32_t project_count = 0;
-  if (!read_integer(stream, zone_count) || !read_integer(stream, plot_count) ||
-      !read_integer(stream, road_cell_count) || !read_integer(stream, project_count)) {
-    result.error_message = "Failed to read trailing snapshot section counts.";
-    return false;
-  }
-  if (zone_count != 0U || plot_count != 0U || road_cell_count != 0U || project_count != 0U) {
-    result.error_message =
-        "This Milestone 1 save/load path supports only saves with zero zones, plots, roads, and projects.";
+  zones::initialize_zone_state(world_state);
+
+  if (!read_integer(stream, zone_count)) {
+    result.error_message = "Failed to read the zone snapshot count.";
     return false;
   }
 
-  world_state.zone_count = 0;
+  world_state.zones.clear();
+  world_state.zones.reserve(zone_count);
+  uint32_t max_zone_id = 0;
+  for (uint32_t zone_index = 0; zone_index < zone_count; ++zone_index) {
+    zones::ZoneState zone;
+    uint8_t encoded_zone_type = 0;
+    if (!read_integer(stream, zone.zone_id.value) ||
+        !read_integer(stream, zone.owner_settlement_id.value) ||
+        !read_integer(stream, encoded_zone_type) ||
+        !is_supported_zone_type(encoded_zone_type) ||
+        !read_u32_vector(stream, zone.member_cell_indices)) {
+      result.error_message = "Failed to read a zone snapshot.";
+      return false;
+    }
+
+    zone.zone_type = static_cast<ZoneType>(encoded_zone_type);
+    std::sort(zone.member_cell_indices.begin(), zone.member_cell_indices.end());
+
+    for (const uint32_t cell_index : zone.member_cell_indices) {
+      if (cell_index >= world_state.zone_cells.size()) {
+        result.error_message = "A saved zone references an out-of-bounds cell index.";
+        return false;
+      }
+
+      zones::CellZoneState& cell_zone = world_state.zone_cells[cell_index];
+      if (cell_zone.occupied) {
+        result.error_message = "Saved zones overlap on at least one cell.";
+        return false;
+      }
+
+      cell_zone.occupied = true;
+      cell_zone.zone_id = zone.zone_id;
+      cell_zone.owner_settlement_id = zone.owner_settlement_id;
+      cell_zone.zone_type = zone.zone_type;
+    }
+
+    max_zone_id = std::max(max_zone_id, zone.zone_id.value);
+    world_state.zones.push_back(std::move(zone));
+  }
+
+  world_state.next_zone_id = ZoneId{max_zone_id + 1U};
+
+  uint32_t plot_count = 0;
+  uint32_t road_cell_count = 0;
+  uint32_t project_count = 0;
+  if (!read_integer(stream, plot_count) || !read_integer(stream, road_cell_count) ||
+      !read_integer(stream, project_count)) {
+    result.error_message = "Failed to read trailing snapshot section counts.";
+    return false;
+  }
+  if (plot_count != 0U || road_cell_count != 0U || project_count != 0U) {
+    result.error_message =
+        "This Milestone 1 save/load path supports only saves with zero plots, roads, and projects.";
+    return false;
+  }
+
+  zones::rebuild_zone_state(world_state);
   world_state.plot_count = 0;
   world_state.project_count = 0;
   world_state.road_cell_count = 0;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <compare>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -18,11 +19,15 @@ using YearIndex = uint16_t;
 struct CellCoord {
   int32_t x = 0;
   int32_t y = 0;
+
+  auto operator<=>(const CellCoord&) const = default;
 };
 
 struct ChunkCoord {
   int16_t x = 0;
   int16_t y = 0;
+
+  auto operator<=>(const ChunkCoord&) const = default;
 };
 
 enum class PriorityLabel : uint8_t {
@@ -96,6 +101,35 @@ struct SaveWorldResult {
   bool ok = false;
   std::string error_message;
   std::string json_debug_path;
+};
+
+enum class CommandRejectReason : uint16_t {
+  InvalidSettlement,
+  InvalidCells,
+  IllegalZoneTarget,
+  IllegalRoadRoute,
+  IllegalBuildingRequest,
+  IllegalFoundingTarget,
+  MissingResources,
+  DuplicateUniqueBuilding,
+  InvalidProject,
+  InvalidPriority,
+  Unknown
+};
+
+struct CommandOutcome {
+  bool accepted = false;
+  uint32_t command_index = 0;
+  CommandRejectReason reject_reason = CommandRejectReason::Unknown;
+  std::string reject_message;
+};
+
+struct BatchResult {
+  std::vector<CommandOutcome> outcomes;
+  std::vector<ChunkCoord> dirty_chunks;
+  std::vector<OverlayType> dirty_overlays;
+  std::vector<SettlementId> dirty_settlements;
+  std::vector<ProjectId> new_projects;
 };
 
 struct PhaseTiming {

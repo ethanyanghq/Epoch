@@ -6,6 +6,7 @@
 
 #include "alpha/api/result_types.hpp"
 #include "alpha/map/map_grid.hpp"
+#include "alpha/world/ids.hpp"
 
 namespace alpha::settlements {
 
@@ -42,6 +43,7 @@ struct SettlementState {
   SettlementId founding_source_settlement_id;
   bool has_founding_source = false;
   bool food_shortage_flag = false;
+  std::vector<ZoneId> owned_zone_ids;
 };
 
 SettlementState make_starting_settlement(const map::MapGrid& map_grid);

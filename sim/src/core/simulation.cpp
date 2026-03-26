@@ -8,6 +8,7 @@
 #include "alpha/map/overlay_chunks.hpp"
 #include "alpha/save/save_io.hpp"
 #include "alpha/settlements/settlement_types.hpp"
+#include "alpha/zones/zone_types.hpp"
 
 namespace alpha::core {
 namespace {
@@ -60,6 +61,7 @@ CreateWorldResult Simulation::create_world(const WorldCreateParams& params) {
   }
 
   world_state.settlements.push_back(settlements::make_starting_settlement(world_state.map_grid));
+  zones::initialize_zone_state(world_state);
   world_state_ = std::move(world_state);
 
   return {
@@ -97,6 +99,24 @@ SaveWorldResult Simulation::save_world(const SaveWorldParams& params) const {
   return save::save_world(*world_state_, params);
 }
 
+BatchResult Simulation::apply_commands(const CommandBatch& batch) {
+  if (!world_state_.has_value()) {
+    BatchResult result;
+    result.outcomes.reserve(batch.commands.size());
+    for (uint32_t command_index = 0; command_index < batch.commands.size(); ++command_index) {
+      result.outcomes.push_back({
+          .accepted = false,
+          .command_index = command_index,
+          .reject_reason = CommandRejectReason::Unknown,
+          .reject_message = "No world is loaded.",
+      });
+    }
+    return result;
+  }
+
+  return zones::apply_commands(*world_state_, batch);
+}
+
 TurnReport Simulation::advance_month() {
   if (!world_state_.has_value()) {
     return {};
@@ -130,7 +150,17 @@ OverlayChunkResult Simulation::get_overlay_chunk(const OverlayChunkQuery& query)
     };
   }
 
-  return map::build_overlay_chunk_result(world_state_->map_grid, query);
+  switch (query.overlay_type) {
+    case OverlayType::Fertility:
+      return map::build_overlay_chunk_result(world_state_->map_grid, query);
+    case OverlayType::ZoneOwner:
+      return zones::build_zone_owner_overlay_chunk_result(*world_state_, query);
+    default:
+      return {
+          .chunk = query.chunk,
+          .overlay_type = query.overlay_type,
+      };
+  }
 }
 
 SettlementSummary Simulation::get_settlement_summary(const SettlementId settlement_id) const {
@@ -158,7 +188,6 @@ SettlementSummary Simulation::get_settlement_summary(const SettlementId settleme
   }
 
   summary = settlements::build_settlement_summary(*settlement);
-  summary.active_zone_count = 0;
   summary.active_project_count = 0;
   return summary;
 }

@@ -13,6 +13,7 @@ class Simulation final {
   CreateWorldResult create_world(const WorldCreateParams& params);
   LoadWorldResult load_world(const LoadWorldParams& params);
   SaveWorldResult save_world(const SaveWorldParams& params) const;
+  BatchResult apply_commands(const CommandBatch& batch);
   TurnReport advance_month();
   ChunkVisualResult get_chunk_visual(const ChunkVisualQuery& query) const;
   OverlayChunkResult get_overlay_chunk(const OverlayChunkQuery& query) const;

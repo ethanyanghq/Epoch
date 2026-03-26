@@ -17,6 +17,7 @@ add_library(alpha_sim STATIC
   src/save/save_io.cpp
   src/settlements/settlement_types.cpp
   src/world/world_state.cpp
+  src/zones/zone_types.cpp
 )
 
 target_compile_features(alpha_sim PUBLIC cxx_std_20)
@@ -35,6 +36,10 @@ if(BUILD_TESTING)
     tests/unit/save_load_roundtrip_test.cpp
   )
 
+  add_executable(alpha_sim_zoning_test
+    tests/unit/zoning_commands_test.cpp
+  )
+
   target_link_libraries(alpha_sim_smoke_test
     PRIVATE
       alpha_sim
@@ -45,6 +50,12 @@ if(BUILD_TESTING)
       alpha_sim
   )
 
+  target_link_libraries(alpha_sim_zoning_test
+    PRIVATE
+      alpha_sim
+  )
+
   add_test(NAME alpha_sim_smoke_test COMMAND alpha_sim_smoke_test)
   add_test(NAME alpha_sim_save_load_test COMMAND alpha_sim_save_load_test)
+  add_test(NAME alpha_sim_zoning_test COMMAND alpha_sim_zoning_test)
 endif()

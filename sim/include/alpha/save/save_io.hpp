@@ -7,7 +7,7 @@
 
 namespace alpha::save {
 
-inline constexpr uint32_t kSaveFormatVersion = 1;
+inline constexpr uint32_t kSaveFormatVersion = 2;
 inline constexpr uint32_t kRulesetVersion = 1;
 inline constexpr uint32_t kGeneratorVersion = 1;
 

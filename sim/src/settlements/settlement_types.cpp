@@ -159,6 +159,7 @@ SettlementSummary build_settlement_summary(const SettlementState& settlement_sta
       .food = settlement_state.stockpile.food,
       .wood = settlement_state.stockpile.wood,
       .stone = settlement_state.stockpile.stone,
+      .active_zone_count = static_cast<uint32_t>(settlement_state.owned_zone_ids.size()),
       .food_shortage_flag = settlement_state.food_shortage_flag,
   };
 
