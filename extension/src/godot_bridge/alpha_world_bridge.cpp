@@ -19,6 +19,11 @@ alpha::OverlayChunkResult AlphaWorldBridge::get_overlay_chunk(
   return world_api_.get_overlay_chunk(query);
 }
 
+alpha::SettlementSummary AlphaWorldBridge::get_settlement_summary(
+    const alpha::SettlementId settlement_id) const {
+  return world_api_.get_settlement_summary(settlement_id);
+}
+
 alpha::WorldMetrics AlphaWorldBridge::get_world_metrics() const {
   return world_api_.get_world_metrics();
 }

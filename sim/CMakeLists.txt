@@ -14,6 +14,7 @@ add_library(alpha_sim STATIC
   src/map/chunk_visuals.cpp
   src/map/map_grid.cpp
   src/map/overlay_chunks.cpp
+  src/settlements/settlement_types.cpp
   src/world/world_state.cpp
 )
 

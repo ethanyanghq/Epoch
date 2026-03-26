@@ -6,6 +6,7 @@
 
 #include "alpha/map/chunk_visuals.hpp"
 #include "alpha/map/overlay_chunks.hpp"
+#include "alpha/settlements/settlement_types.hpp"
 
 namespace alpha::core {
 namespace {
@@ -54,6 +55,7 @@ CreateWorldResult Simulation::create_world(const WorldCreateParams& params) {
     };
   }
 
+  world_state.settlements.push_back(settlements::make_starting_settlement(world_state.map_grid));
   world_state_ = std::move(world_state);
 
   return {
@@ -96,6 +98,36 @@ OverlayChunkResult Simulation::get_overlay_chunk(const OverlayChunkQuery& query)
   }
 
   return map::build_overlay_chunk_result(world_state_->map_grid, query);
+}
+
+SettlementSummary Simulation::get_settlement_summary(const SettlementId settlement_id) const {
+  SettlementSummary summary{
+      .settlement_id = settlement_id,
+      .buildings =
+          {
+              BuildingStateView{
+                  .building_type = BuildingType::EstateI,
+              },
+              BuildingStateView{
+                  .building_type = BuildingType::WarehouseI,
+              },
+          },
+  };
+
+  if (!world_state_.has_value()) {
+    return summary;
+  }
+
+  const settlements::SettlementState* settlement =
+      settlements::find_settlement(world_state_->settlements, settlement_id);
+  if (settlement == nullptr) {
+    return summary;
+  }
+
+  summary = settlements::build_settlement_summary(*settlement);
+  summary.active_zone_count = 0;
+  summary.active_project_count = 0;
+  return summary;
 }
 
 WorldMetrics Simulation::get_world_metrics() const {

@@ -18,6 +18,10 @@ OverlayChunkResult WorldApi::get_overlay_chunk(const OverlayChunkQuery& query) c
   return simulation_.get_overlay_chunk(query);
 }
 
+SettlementSummary WorldApi::get_settlement_summary(const SettlementId settlement_id) const {
+  return simulation_.get_settlement_summary(settlement_id);
+}
+
 WorldMetrics WorldApi::get_world_metrics() const {
   return simulation_.get_world_metrics();
 }

@@ -6,6 +6,7 @@
 
 #include "alpha/api/result_types.hpp"
 #include "alpha/map/map_grid.hpp"
+#include "alpha/settlements/settlement_types.hpp"
 
 namespace alpha::world {
 
@@ -23,7 +24,7 @@ struct WorldState {
   CalendarState calendar;
   map::MapGrid map_grid;
   std::vector<ChunkCoord> dirty_chunks;
-  uint32_t settlement_count = 0;
+  std::vector<settlements::SettlementState> settlements;
   uint32_t zone_count = 0;
   uint32_t plot_count = 0;
   uint32_t project_count = 0;

@@ -17,6 +17,7 @@ class AlphaWorldBridge final {
   alpha::TurnReport advance_month();
   alpha::ChunkVisualResult get_chunk_visual(const alpha::ChunkVisualQuery& query) const;
   alpha::OverlayChunkResult get_overlay_chunk(const alpha::OverlayChunkQuery& query) const;
+  alpha::SettlementSummary get_settlement_summary(alpha::SettlementId settlement_id) const;
   alpha::WorldMetrics get_world_metrics() const;
 
  private:

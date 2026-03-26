@@ -137,6 +137,25 @@ struct OverlayChunkResult {
   std::vector<OverlayLegendEntry> legend;
 };
 
+struct BuildingStateView {
+  BuildingType building_type = BuildingType::EstateI;
+  bool exists = false;
+  bool staffed = false;
+};
+
+struct SettlementSummary {
+  SettlementId settlement_id;
+  CellCoord center;
+  int32_t population_whole = 0;
+  ResourceAmountTenths food = 0;
+  ResourceAmountTenths wood = 0;
+  ResourceAmountTenths stone = 0;
+  std::array<BuildingStateView, 2> buildings{};
+  uint32_t active_zone_count = 0;
+  uint32_t active_project_count = 0;
+  bool food_shortage_flag = false;
+};
+
 struct WorldMetrics {
   uint32_t settlement_count = 0;
   uint32_t zone_count = 0;

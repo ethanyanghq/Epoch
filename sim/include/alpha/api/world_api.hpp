@@ -10,6 +10,7 @@ class WorldApi final {
   TurnReport advance_month();
   ChunkVisualResult get_chunk_visual(const ChunkVisualQuery& query) const;
   OverlayChunkResult get_overlay_chunk(const OverlayChunkQuery& query) const;
+  SettlementSummary get_settlement_summary(SettlementId settlement_id) const;
   WorldMetrics get_world_metrics() const;
 
  private:

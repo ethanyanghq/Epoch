@@ -39,6 +39,26 @@ void assert_overlay_results_equal(const alpha::OverlayChunkResult& left,
   }
 }
 
+void assert_settlement_summaries_equal(const alpha::SettlementSummary& left,
+                                       const alpha::SettlementSummary& right) {
+  assert(left.settlement_id == right.settlement_id);
+  assert(left.center.x == right.center.x);
+  assert(left.center.y == right.center.y);
+  assert(left.population_whole == right.population_whole);
+  assert(left.food == right.food);
+  assert(left.wood == right.wood);
+  assert(left.stone == right.stone);
+  assert(left.active_zone_count == right.active_zone_count);
+  assert(left.active_project_count == right.active_project_count);
+  assert(left.food_shortage_flag == right.food_shortage_flag);
+
+  for (std::size_t index = 0; index < left.buildings.size(); ++index) {
+    assert(left.buildings[index].building_type == right.buildings[index].building_type);
+    assert(left.buildings[index].exists == right.buildings[index].exists);
+    assert(left.buildings[index].staffed == right.buildings[index].staffed);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -121,6 +141,52 @@ int main() {
   });
   assert_overlay_results_equal(fertility_overlay, repeated_overlay);
 
+  const alpha::SettlementId starting_settlement_id{1};
+  const alpha::SettlementSummary invalid_summary =
+      world_api.get_settlement_summary(alpha::SettlementId{999});
+  assert(invalid_summary.settlement_id.value == 999U);
+  assert(invalid_summary.center.x == 0);
+  assert(invalid_summary.center.y == 0);
+  assert(invalid_summary.population_whole == 0);
+  assert(invalid_summary.food == 0);
+  assert(invalid_summary.wood == 0);
+  assert(invalid_summary.stone == 0);
+  assert(invalid_summary.active_zone_count == 0U);
+  assert(invalid_summary.active_project_count == 0U);
+  assert(!invalid_summary.food_shortage_flag);
+  assert(invalid_summary.buildings.size() == 2U);
+  assert(invalid_summary.buildings[0].building_type == alpha::BuildingType::EstateI);
+  assert(!invalid_summary.buildings[0].exists);
+  assert(!invalid_summary.buildings[0].staffed);
+  assert(invalid_summary.buildings[1].building_type == alpha::BuildingType::WarehouseI);
+  assert(!invalid_summary.buildings[1].exists);
+  assert(!invalid_summary.buildings[1].staffed);
+
+  const alpha::SettlementSummary settlement_summary =
+      world_api.get_settlement_summary(starting_settlement_id);
+  assert(settlement_summary.settlement_id == starting_settlement_id);
+  assert(settlement_summary.center.x >= 0);
+  assert(settlement_summary.center.x < 1024);
+  assert(settlement_summary.center.y >= 0);
+  assert(settlement_summary.center.y < 1024);
+  assert(settlement_summary.population_whole == 20);
+  assert(settlement_summary.food == 400);
+  assert(settlement_summary.wood == 200);
+  assert(settlement_summary.stone == 100);
+  assert(settlement_summary.active_zone_count == 0U);
+  assert(settlement_summary.active_project_count == 0U);
+  assert(!settlement_summary.food_shortage_flag);
+  assert(settlement_summary.buildings[0].building_type == alpha::BuildingType::EstateI);
+  assert(settlement_summary.buildings[0].exists);
+  assert(!settlement_summary.buildings[0].staffed);
+  assert(settlement_summary.buildings[1].building_type == alpha::BuildingType::WarehouseI);
+  assert(settlement_summary.buildings[1].exists);
+  assert(!settlement_summary.buildings[1].staffed);
+
+  const alpha::SettlementSummary repeated_settlement_summary =
+      world_api.get_settlement_summary(starting_settlement_id);
+  assert_settlement_summaries_equal(settlement_summary, repeated_settlement_summary);
+
   alpha::WorldApi second_world_api;
   const alpha::CreateWorldResult second_create_result = second_world_api.create_world({
       .terrain_seed = 11,
@@ -142,6 +208,10 @@ int main() {
       .overlay_type = alpha::OverlayType::Fertility,
   });
   assert_overlay_results_equal(fertility_overlay, second_world_overlay);
+
+  const alpha::SettlementSummary second_world_settlement_summary =
+      second_world_api.get_settlement_summary(starting_settlement_id);
+  assert_settlement_summaries_equal(settlement_summary, second_world_settlement_summary);
 
   const alpha::ChunkVisualResult invalid_chunk = world_api.get_chunk_visual({
       .chunk = {.x = 16, .y = 0},
@@ -187,7 +257,7 @@ int main() {
   }
 
   alpha::WorldMetrics metrics = world_api.get_world_metrics();
-  assert(metrics.settlement_count == 0U);
+  assert(metrics.settlement_count == 1U);
   assert(metrics.zone_count == 0U);
   assert(metrics.plot_count == 0U);
   assert(metrics.project_count == 0U);
